@@ -13,6 +13,7 @@ use sui::sui::SUI;
 use fen::config::{Self, FenConfig, AdminCap};
 use fen::corridor::{Self, CorridorRegistry, Corridor};
 use fen::treasury::{Self, Treasury};
+use fen::route_graph::{Self, RouteGraph};
 
 // Test addresses (valid hex)
 const ADMIN: address = @0xA1;
@@ -1397,6 +1398,521 @@ fun test_treasury_withdraw_all_not_recipient_aborts() {
         let mut treasury = scenario.take_shared<Treasury>();
         treasury::withdraw_all(&mut treasury, scenario.ctx());
         ts::return_shared(treasury);
+    };
+    scenario.end();
+}
+
+// === Liquidity Pool (AMM) Tests ===
+
+#[test]
+fun test_pool_initialize_and_quote() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let su_id = object::id_from_address(SSU1_ADDR);
+
+        fen::liquidity_pool::initialize_pool(
+            &mut fen_config, &admin_cap, su_id,
+            100, 200,           // type_x, type_y
+            1000, 2000,         // initial reserves (price = 2:1)
+            30,                 // 0.3% fee
+        );
+
+        let pool = fen::liquidity_pool::get_pool(&fen_config, su_id);
+        let (rx, ry) = fen::liquidity_pool::reserves(pool);
+        assert!(rx == 1000 && ry == 2000);
+
+        let (tx, ty) = fen::liquidity_pool::types(pool);
+        assert!(tx == 100 && ty == 200);
+
+        assert!(fen::liquidity_pool::pool_fee_bps(pool) == 30);
+        assert!(fen::liquidity_pool::pool_is_active(pool));
+        assert!(fen::liquidity_pool::total_swaps(pool) == 0);
+
+        // Spot price should be ~2000 (2:1 scaled by 1000)
+        assert!(fen::liquidity_pool::spot_price_x1000(pool) == 2000);
+
+        // Quote a swap: 100 X → Y
+        let (output, fee) = fen::liquidity_pool::quote_swap(
+            &fen_config, su_id, 100, 100,
+        );
+        // With 0.3% fee: input_after_fee = 99, output = (99 * 2000) / (1000 + 99) = 180
+        assert!(output > 0);
+        assert!(fee > 0);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_pool_swap_updates_reserves() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let su_id = object::id_from_address(SSU1_ADDR);
+
+        fen::liquidity_pool::initialize_pool(
+            &mut fen_config, &admin_cap, su_id,
+            100, 200, 10000, 10000, 30,
+        );
+
+        // Record a swap: 1000 X → Y
+        let (output, fee) = fen::liquidity_pool::record_swap(
+            &mut fen_config, &admin_cap, su_id,
+            OPERATOR, 100, 1000, 0, // min_output = 0
+        );
+
+        assert!(output > 0);
+        assert!(fee > 0);
+
+        let pool = fen::liquidity_pool::get_pool(&fen_config, su_id);
+        let (rx, ry) = fen::liquidity_pool::reserves(pool);
+        // reserve_x increased, reserve_y decreased
+        assert!(rx == 11000);
+        assert!(ry == 10000 - output);
+        assert!(fen::liquidity_pool::total_swaps(pool) == 1);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_pool_price_impact() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let su_id = object::id_from_address(SSU1_ADDR);
+
+        fen::liquidity_pool::initialize_pool(
+            &mut fen_config, &admin_cap, su_id,
+            100, 200, 10000, 10000, 0, // 0% fee for clean math
+        );
+
+        // Small swap: price impact minimal
+        let (small_out, _) = fen::liquidity_pool::quote_swap(
+            &fen_config, su_id, 100, 100,
+        );
+        // Large swap: price impact significant
+        let (large_out, _) = fen::liquidity_pool::quote_swap(
+            &fen_config, su_id, 100, 5000,
+        );
+
+        // Per-unit output should be worse for large swaps (price impact)
+        let small_rate = (small_out * 1000) / 100;
+        let large_rate = (large_out * 1000) / 5000;
+        assert!(small_rate > large_rate);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+#[expected_failure]
+fun test_pool_slippage_protection() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let su_id = object::id_from_address(SSU1_ADDR);
+
+        fen::liquidity_pool::initialize_pool(
+            &mut fen_config, &admin_cap, su_id,
+            100, 200, 10000, 10000, 30,
+        );
+
+        // Try to swap with impossibly high min_output → should abort
+        let (_output, _fee) = fen::liquidity_pool::record_swap(
+            &mut fen_config, &admin_cap, su_id,
+            OPERATOR, 100, 100, 99999, // min_output way too high
+        );
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_pool_add_liquidity() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let su_id = object::id_from_address(SSU1_ADDR);
+
+        fen::liquidity_pool::initialize_pool(
+            &mut fen_config, &admin_cap, su_id,
+            100, 200, 1000, 1000, 30,
+        );
+
+        fen::liquidity_pool::add_liquidity(
+            &mut fen_config, &admin_cap, su_id, 500, 500,
+        );
+
+        let pool = fen::liquidity_pool::get_pool(&fen_config, su_id);
+        let (rx, ry) = fen::liquidity_pool::reserves(pool);
+        assert!(rx == 1500 && ry == 1500);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_pool_deactivate_activate() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let su_id = object::id_from_address(SSU1_ADDR);
+
+        fen::liquidity_pool::initialize_pool(
+            &mut fen_config, &admin_cap, su_id,
+            100, 200, 1000, 1000, 30,
+        );
+
+        fen::liquidity_pool::deactivate_pool(&mut fen_config, &admin_cap, su_id);
+        assert!(!fen::liquidity_pool::pool_is_active(
+            fen::liquidity_pool::get_pool(&fen_config, su_id)
+        ));
+
+        fen::liquidity_pool::activate_pool(&mut fen_config, &admin_cap, su_id);
+        assert!(fen::liquidity_pool::pool_is_active(
+            fen::liquidity_pool::get_pool(&fen_config, su_id)
+        ));
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+// === Reputation Tests ===
+
+#[test]
+fun test_reputation_init_and_record() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let clock = sui::clock::create_for_testing(scenario.ctx());
+
+        // Record a toll (auto-initializes reputation)
+        fen::reputation::record_toll(
+            &mut fen_config, &admin_cap, OPERATOR,
+            1_000_000_000, 100, &clock,
+        );
+
+        assert!(fen::reputation::has_reputation(&fen_config, OPERATOR));
+
+        let rep = fen::reputation::get_reputation(&fen_config, OPERATOR);
+        assert!(fen::reputation::total_transactions(rep) == 1);
+        assert!(fen::reputation::total_volume_sui(rep) == 1_000_000_000);
+        assert!(fen::reputation::uptime_score(rep) == 10000);
+        assert!(fen::reputation::lockdowns(rep) == 0);
+
+        clock.destroy_for_testing();
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_reputation_lockdown_penalty() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let clock = sui::clock::create_for_testing(scenario.ctx());
+
+        fen::reputation::record_toll(
+            &mut fen_config, &admin_cap, OPERATOR,
+            1_000_000_000, 100, &clock,
+        );
+
+        let rep = fen::reputation::get_reputation(&fen_config, OPERATOR);
+        let initial_uptime = fen::reputation::uptime_score(rep);
+
+        // Record lockdown → should penalize uptime
+        fen::reputation::record_lockdown(
+            &mut fen_config, &admin_cap, OPERATOR, &clock,
+        );
+
+        let rep = fen::reputation::get_reputation(&fen_config, OPERATOR);
+        assert!(fen::reputation::uptime_score(rep) < initial_uptime);
+        assert!(fen::reputation::lockdowns(rep) == 1);
+
+        clock.destroy_for_testing();
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_reputation_composite_score() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let clock = sui::clock::create_for_testing(scenario.ctx());
+
+        // Build up some activity
+        let mut i = 0u64;
+        while (i < 15) {
+            fen::reputation::record_toll(
+                &mut fen_config, &admin_cap, OPERATOR,
+                1_000_000_000, 200, &clock,
+            );
+            i = i + 1;
+        };
+
+        let score = fen::reputation::composite_score(&fen_config, OPERATOR);
+        // Should be > 0 with 15 transactions, 100% uptime, reasonable fees
+        assert!(score > 0);
+        assert!(score <= 10000);
+
+        clock.destroy_for_testing();
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_reputation_trade_recording() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let clock = sui::clock::create_for_testing(scenario.ctx());
+
+        fen::reputation::record_trade(
+            &mut fen_config, &admin_cap, OPERATOR,
+            500_000_000, 300, &clock,
+        );
+        fen::reputation::record_trade(
+            &mut fen_config, &admin_cap, OPERATOR,
+            300_000_000, 200, &clock,
+        );
+
+        let rep = fen::reputation::get_reputation(&fen_config, OPERATOR);
+        assert!(fen::reputation::total_transactions(rep) == 2);
+        assert!(fen::reputation::total_volume_sui(rep) == 800_000_000);
+
+        clock.destroy_for_testing();
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+// === Route Graph Tests ===
+
+#[test]
+fun test_route_graph_add_edge() {
+    let mut scenario = ts::begin(OPERATOR);
+    {
+        route_graph::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(OPERATOR);
+    {
+        let mut graph = scenario.take_shared<RouteGraph>();
+        let source = object::id_from_address(GATE1_ADDR);
+        let dest = object::id_from_address(GATE2_ADDR);
+        let corridor = object::id_from_address(CORRIDOR1_ADDR);
+
+        assert!(route_graph::total_edges(&graph) == 0);
+        assert!(route_graph::total_nodes(&graph) == 0);
+
+        route_graph::add_edge(
+            &mut graph, source, dest, corridor,
+            b"Helios Express", 500_000_000, 250,
+            scenario.ctx(),
+        );
+
+        assert!(route_graph::total_edges(&graph) == 2); // bidirectional
+        assert!(route_graph::total_nodes(&graph) == 2);
+
+        // Check forward adjacency
+        assert!(route_graph::has_node(&graph, source));
+        let adj = route_graph::get_adjacency(&graph, source);
+        assert!(route_graph::edge_count(adj) == 1);
+
+        let edges = route_graph::edges(adj);
+        let edge = &edges[0];
+        assert!(route_graph::edge_dest_node(edge) == dest);
+        assert!(route_graph::edge_toll_cost(edge) == 500_000_000);
+        assert!(route_graph::edge_trade_fee_bps(edge) == 250);
+        assert!(route_graph::edge_is_active(edge));
+        assert!(route_graph::edge_name(edge) == b"Helios Express");
+
+        // Check reverse adjacency
+        let adj_rev = route_graph::get_adjacency(&graph, dest);
+        assert!(route_graph::edge_count(adj_rev) == 1);
+        assert!(route_graph::edge_dest_node(&route_graph::edges(adj_rev)[0]) == source);
+
+        ts::return_shared(graph);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_route_graph_multi_hop() {
+    let mut scenario = ts::begin(OPERATOR);
+    {
+        route_graph::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(OPERATOR);
+    {
+        let mut graph = scenario.take_shared<RouteGraph>();
+        let node_a = object::id_from_address(GATE1_ADDR);
+        let node_b = object::id_from_address(GATE2_ADDR);
+        let node_c = object::id_from_address(@0x1003);
+        let corridor1 = object::id_from_address(CORRIDOR1_ADDR);
+        let corridor2 = object::id_from_address(@0x4002);
+
+        // A↔B
+        route_graph::add_edge(
+            &mut graph, node_a, node_b, corridor1,
+            b"Route Alpha", 500_000_000, 200,
+            scenario.ctx(),
+        );
+
+        // B↔C
+        route_graph::add_edge(
+            &mut graph, node_b, node_c, corridor2,
+            b"Route Beta", 300_000_000, 150,
+            scenario.ctx(),
+        );
+
+        // Node B should have 2 edges (to A and to C)
+        let adj_b = route_graph::get_adjacency(&graph, node_b);
+        assert!(route_graph::edge_count(adj_b) == 2);
+
+        assert!(route_graph::total_edges(&graph) == 4); // 2 corridors × 2 directions
+        assert!(route_graph::total_nodes(&graph) == 3);
+
+        ts::return_shared(graph);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_route_graph_update_cost() {
+    let mut scenario = ts::begin(OPERATOR);
+    {
+        route_graph::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(OPERATOR);
+    {
+        let mut graph = scenario.take_shared<RouteGraph>();
+        let source = object::id_from_address(GATE1_ADDR);
+        let dest = object::id_from_address(GATE2_ADDR);
+        let corridor = object::id_from_address(CORRIDOR1_ADDR);
+
+        route_graph::add_edge(
+            &mut graph, source, dest, corridor,
+            b"Test", 500_000_000, 250,
+            scenario.ctx(),
+        );
+
+        // Update cost
+        route_graph::update_edge_cost(
+            &mut graph, source, corridor, 1_000_000_000, 500,
+        );
+
+        let adj = route_graph::get_adjacency(&graph, source);
+        let edge = &route_graph::edges(adj)[0];
+        assert!(route_graph::edge_toll_cost(edge) == 1_000_000_000);
+        assert!(route_graph::edge_trade_fee_bps(edge) == 500);
+
+        ts::return_shared(graph);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_route_graph_set_edge_active() {
+    let mut scenario = ts::begin(OPERATOR);
+    {
+        route_graph::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(OPERATOR);
+    {
+        let mut graph = scenario.take_shared<RouteGraph>();
+        let source = object::id_from_address(GATE1_ADDR);
+        let dest = object::id_from_address(GATE2_ADDR);
+        let corridor = object::id_from_address(CORRIDOR1_ADDR);
+
+        route_graph::add_edge(
+            &mut graph, source, dest, corridor,
+            b"Test", 500_000_000, 250,
+            scenario.ctx(),
+        );
+
+        // Deactivate
+        route_graph::set_edge_active(&mut graph, source, corridor, false);
+        let adj = route_graph::get_adjacency(&graph, source);
+        assert!(!route_graph::edge_is_active(&route_graph::edges(adj)[0]));
+
+        // Reactivate
+        route_graph::set_edge_active(&mut graph, source, corridor, true);
+        let adj = route_graph::get_adjacency(&graph, source);
+        assert!(route_graph::edge_is_active(&route_graph::edges(adj)[0]));
+
+        ts::return_shared(graph);
     };
     scenario.end();
 }
