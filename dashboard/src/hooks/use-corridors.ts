@@ -1,7 +1,8 @@
 "use client";
 
-import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { useSuiClientQuery, useSuiClient } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
+import { useState, useEffect, useMemo } from "react";
 import type { Corridor, DashboardStats, ActivityEvent, TradeRoute } from "@/lib/types";
 
 const STATUS_MAP: Record<number, Corridor["status"]> = {
@@ -77,10 +78,28 @@ function parseCorridorObject(id: string, fields: Record<string, unknown>): Corri
   };
 }
 
+// --- Toll/Depot dynamic field types ---
+interface TollConfigFields {
+  toll_amount: string | number;
+  surge_active: boolean;
+  surge_numerator: string | number;
+}
+
+interface DepotConfigFields {
+  input_type_id: string | number;
+  output_type_id: string | number;
+  ratio_in: string | number;
+  ratio_out: string | number;
+  fee_bps: string | number;
+  is_active: boolean;
+  total_trades: string | number;
+  total_volume_in: string | number;
+  total_fees_collected: string | number;
+}
+
 /**
- * Discover corridors by querying CorridorCreatedEvent, then fetch each object.
- * This works because the CorridorRegistry uses a Table (dynamic fields) which
- * aren't visible via getObject on the registry itself.
+ * Discover corridors by querying CorridorCreatedEvent, then fetch each object,
+ * then enrich with TollConfig and DepotConfig dynamic fields.
  */
 export function useCorridors(): {
   corridors: Corridor[];
@@ -90,6 +109,7 @@ export function useCorridors(): {
 } {
   const packageId = useNetworkVariable("fenPackageId");
   const isConfigured = packageId !== "0x0";
+  const client = useSuiClient();
 
   // Step 1: Query CorridorCreatedEvent to discover corridor IDs
   const { data: eventsData, isLoading: eventsLoading, error: eventsError, refetch } = useSuiClientQuery(
@@ -123,17 +143,113 @@ export function useCorridors(): {
     { enabled: corridorIds.length > 0 }
   );
 
-  const corridors: Corridor[] = [];
-  if (objectsData) {
+  // Step 3: Parse base corridor data
+  const baseCorridors: Corridor[] = useMemo(() => {
+    if (!objectsData) return [];
+    const result: Corridor[] = [];
     for (const obj of objectsData) {
       if (obj.data?.content && "fields" in obj.data.content) {
         const fields = obj.data.content.fields as Record<string, unknown>;
-        // The Corridor struct has an `id` field that's a UID wrapper
-        const objId = obj.data.objectId;
-        corridors.push(parseCorridorObject(objId, fields));
+        result.push(parseCorridorObject(obj.data.objectId, fields));
       }
     }
-  }
+    return result;
+  }, [objectsData]);
+
+  // Step 4: Enrich with dynamic fields (TollConfig + DepotConfig)
+  const [enrichedCorridors, setEnrichedCorridors] = useState<Corridor[]>([]);
+  const stableKey = baseCorridors.map((c) => c.id).join(",");
+
+  useEffect(() => {
+    if (baseCorridors.length === 0) {
+      setEnrichedCorridors([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function enrich() {
+      const enriched = await Promise.all(
+        baseCorridors.map(async (c) => {
+          const corridor = structuredClone(c);
+
+          // Read TollConfig for source gate
+          if (corridor.sourceGate.id) {
+            const tollConfig = await fetchTollConfig(client, packageId, corridor.id, corridor.sourceGate.id);
+            if (tollConfig) {
+              corridor.sourceGate.tollAmount = Number(tollConfig.toll_amount);
+              corridor.sourceGate.surgeActive = tollConfig.surge_active;
+              corridor.sourceGate.surgeMultiplier = Number(tollConfig.surge_numerator);
+            }
+          }
+
+          // Read TollConfig for dest gate
+          if (corridor.destGate.id) {
+            const tollConfig = await fetchTollConfig(client, packageId, corridor.id, corridor.destGate.id);
+            if (tollConfig) {
+              corridor.destGate.tollAmount = Number(tollConfig.toll_amount);
+              corridor.destGate.surgeActive = tollConfig.surge_active;
+              corridor.destGate.surgeMultiplier = Number(tollConfig.surge_numerator);
+            }
+          }
+
+          // Read DepotConfig for depot A
+          if (corridor.depotA.id) {
+            const depotConfig = await fetchDepotConfig(client, packageId, corridor.id, corridor.depotA.id);
+            if (depotConfig) {
+              corridor.depotA.ratioIn = Number(depotConfig.ratio_in);
+              corridor.depotA.ratioOut = Number(depotConfig.ratio_out);
+              corridor.depotA.feeBps = Number(depotConfig.fee_bps);
+              corridor.depotA.isActive = depotConfig.is_active;
+              corridor.depotA.inputItem = {
+                typeId: Number(depotConfig.input_type_id),
+                name: `Item #${depotConfig.input_type_id}`,
+                icon: "",
+              };
+              corridor.depotA.outputItem = {
+                typeId: Number(depotConfig.output_type_id),
+                name: `Item #${depotConfig.output_type_id}`,
+                icon: "",
+              };
+            }
+          }
+
+          // Read DepotConfig for depot B
+          if (corridor.depotB.id) {
+            const depotConfig = await fetchDepotConfig(client, packageId, corridor.id, corridor.depotB.id);
+            if (depotConfig) {
+              corridor.depotB.ratioIn = Number(depotConfig.ratio_in);
+              corridor.depotB.ratioOut = Number(depotConfig.ratio_out);
+              corridor.depotB.feeBps = Number(depotConfig.fee_bps);
+              corridor.depotB.isActive = depotConfig.is_active;
+              corridor.depotB.inputItem = {
+                typeId: Number(depotConfig.input_type_id),
+                name: `Item #${depotConfig.input_type_id}`,
+                icon: "",
+              };
+              corridor.depotB.outputItem = {
+                typeId: Number(depotConfig.output_type_id),
+                name: `Item #${depotConfig.output_type_id}`,
+                icon: "",
+              };
+            }
+          }
+
+          return corridor;
+        })
+      );
+
+      if (!cancelled) setEnrichedCorridors(enriched);
+    }
+
+    enrich();
+    return () => { cancelled = true; };
+  }, [stableKey, client, packageId]);
+
+  // Return enriched data when available, otherwise base data
+  const corridors = enrichedCorridors.length > 0 && enrichedCorridors.length === baseCorridors.length
+    ? enrichedCorridors
+    : baseCorridors;
 
   return {
     corridors,
@@ -143,11 +259,78 @@ export function useCorridors(): {
   };
 }
 
+async function fetchTollConfig(
+  client: ReturnType<typeof useSuiClient>,
+  packageId: string,
+  corridorId: string,
+  gateId: string,
+): Promise<TollConfigFields | null> {
+  try {
+    const result = await client.getDynamicFieldObject({
+      parentId: corridorId,
+      name: {
+        type: `${packageId}::toll_gate::TollConfigKey`,
+        value: { gate_id: gateId },
+      },
+    });
+    if (result.data?.content && "fields" in result.data.content) {
+      const outer = result.data.content.fields as Record<string, unknown>;
+      // Dynamic field objects have { name, value } structure
+      const value = (outer.value ?? outer) as Record<string, unknown>;
+      return {
+        toll_amount: value.toll_amount as string | number,
+        surge_active: Boolean(value.surge_active),
+        surge_numerator: value.surge_numerator as string | number,
+      };
+    }
+  } catch {
+    // Dynamic field doesn't exist yet (toll not configured)
+  }
+  return null;
+}
+
+async function fetchDepotConfig(
+  client: ReturnType<typeof useSuiClient>,
+  packageId: string,
+  corridorId: string,
+  storageUnitId: string,
+): Promise<DepotConfigFields | null> {
+  try {
+    const result = await client.getDynamicFieldObject({
+      parentId: corridorId,
+      name: {
+        type: `${packageId}::depot::DepotConfigKey`,
+        value: { storage_unit_id: storageUnitId },
+      },
+    });
+    if (result.data?.content && "fields" in result.data.content) {
+      const outer = result.data.content.fields as Record<string, unknown>;
+      const value = (outer.value ?? outer) as Record<string, unknown>;
+      return {
+        input_type_id: value.input_type_id as string | number,
+        output_type_id: value.output_type_id as string | number,
+        ratio_in: value.ratio_in as string | number,
+        ratio_out: value.ratio_out as string | number,
+        fee_bps: value.fee_bps as string | number,
+        is_active: Boolean(value.is_active),
+        total_trades: value.total_trades as string | number,
+        total_volume_in: value.total_volume_in as string | number,
+        total_fees_collected: value.total_fees_collected as string | number,
+      };
+    }
+  } catch {
+    // Dynamic field doesn't exist yet (depot not configured)
+  }
+  return null;
+}
+
 export function useCorridor(id: string): {
   corridor: Corridor | null;
   isLoading: boolean;
   error: Error | null;
 } {
+  const packageId = useNetworkVariable("fenPackageId");
+  const client = useSuiClient();
   const isValid = id.startsWith("0x") && id.length > 3;
 
   const { data, isLoading, error } = useSuiClientQuery(
@@ -159,20 +342,76 @@ export function useCorridor(id: string): {
     { enabled: isValid }
   );
 
-  if (!isValid || !data?.data?.content) {
-    return { corridor: null, isLoading: isValid ? isLoading : false, error: error as Error | null };
-  }
+  const [enriched, setEnriched] = useState<Corridor | null>(null);
 
-  if ("fields" in data.data.content) {
-    const fields = data.data.content.fields as Record<string, unknown>;
-    return {
-      corridor: parseCorridorObject(id, fields),
-      isLoading: false,
-      error: null,
-    };
-  }
+  const baseCorridor = useMemo(() => {
+    if (!isValid || !data?.data?.content) return null;
+    if ("fields" in data.data.content) {
+      const fields = data.data.content.fields as Record<string, unknown>;
+      return parseCorridorObject(id, fields);
+    }
+    return null;
+  }, [data, id, isValid]);
 
-  return { corridor: null, isLoading, error: error as Error | null };
+  useEffect(() => {
+    if (!baseCorridor || packageId === "0x0") return;
+
+    let cancelled = false;
+
+    async function enrich() {
+      const c = structuredClone(baseCorridor!);
+
+      if (c.sourceGate.id) {
+        const tc = await fetchTollConfig(client, packageId, c.id, c.sourceGate.id);
+        if (tc) {
+          c.sourceGate.tollAmount = Number(tc.toll_amount);
+          c.sourceGate.surgeActive = tc.surge_active;
+          c.sourceGate.surgeMultiplier = Number(tc.surge_numerator);
+        }
+      }
+      if (c.destGate.id) {
+        const tc = await fetchTollConfig(client, packageId, c.id, c.destGate.id);
+        if (tc) {
+          c.destGate.tollAmount = Number(tc.toll_amount);
+          c.destGate.surgeActive = tc.surge_active;
+          c.destGate.surgeMultiplier = Number(tc.surge_numerator);
+        }
+      }
+      if (c.depotA.id) {
+        const dc = await fetchDepotConfig(client, packageId, c.id, c.depotA.id);
+        if (dc) {
+          c.depotA.ratioIn = Number(dc.ratio_in);
+          c.depotA.ratioOut = Number(dc.ratio_out);
+          c.depotA.feeBps = Number(dc.fee_bps);
+          c.depotA.isActive = dc.is_active;
+          c.depotA.inputItem = { typeId: Number(dc.input_type_id), name: `Item #${dc.input_type_id}`, icon: "" };
+          c.depotA.outputItem = { typeId: Number(dc.output_type_id), name: `Item #${dc.output_type_id}`, icon: "" };
+        }
+      }
+      if (c.depotB.id) {
+        const dc = await fetchDepotConfig(client, packageId, c.id, c.depotB.id);
+        if (dc) {
+          c.depotB.ratioIn = Number(dc.ratio_in);
+          c.depotB.ratioOut = Number(dc.ratio_out);
+          c.depotB.feeBps = Number(dc.fee_bps);
+          c.depotB.isActive = dc.is_active;
+          c.depotB.inputItem = { typeId: Number(dc.input_type_id), name: `Item #${dc.input_type_id}`, icon: "" };
+          c.depotB.outputItem = { typeId: Number(dc.output_type_id), name: `Item #${dc.output_type_id}`, icon: "" };
+        }
+      }
+
+      if (!cancelled) setEnriched(c);
+    }
+
+    enrich();
+    return () => { cancelled = true; };
+  }, [baseCorridor?.id, client, packageId]);
+
+  return {
+    corridor: enriched || baseCorridor,
+    isLoading: isValid ? isLoading : false,
+    error: error as Error | null,
+  };
 }
 
 export function useDashboardStats(): {
@@ -200,7 +439,6 @@ export function useActivity(corridorId?: string): {
   const packageId = useNetworkVariable("fenPackageId");
   const isConfigured = packageId !== "0x0";
 
-  // Query all events from the corridor module, or specific corridor events
   const { data, isLoading } = useSuiClientQuery(
     "queryEvents",
     {
@@ -213,7 +451,6 @@ export function useActivity(corridorId?: string): {
     { enabled: isConfigured }
   );
 
-  // Also query toll_gate and depot events
   const { data: tollData } = useSuiClientQuery(
     "queryEvents",
     {
@@ -315,7 +552,7 @@ export function useTradeRoutes(): {
         to: c.destGate.solarSystem || "System B",
         inputItem: c.depotA.inputItem.name || "Input",
         outputItem: c.depotA.outputItem.name || "Output",
-        effectiveRate: c.depotA.ratioIn / c.depotA.ratioOut || 1,
+        effectiveRate: c.depotA.ratioOut > 0 ? c.depotA.ratioIn / c.depotA.ratioOut : 1,
         tollCost: c.sourceGate.tollAmount / 1_000_000_000,
         netProfit: 0,
         liquidity: c.depotA.outputStock,
@@ -329,7 +566,7 @@ export function useTradeRoutes(): {
         to: c.sourceGate.solarSystem || "System A",
         inputItem: c.depotB.inputItem.name || "Input",
         outputItem: c.depotB.outputItem.name || "Output",
-        effectiveRate: c.depotB.ratioIn / c.depotB.ratioOut || 1,
+        effectiveRate: c.depotB.ratioOut > 0 ? c.depotB.ratioIn / c.depotB.ratioOut : 1,
         tollCost: c.destGate.tollAmount / 1_000_000_000,
         netProfit: 0,
         liquidity: c.depotB.outputStock,

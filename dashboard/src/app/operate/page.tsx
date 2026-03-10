@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCorridors } from "@/hooks/use-corridors";
+import { useOwnerCaps } from "@/hooks/use-owner-caps";
+import { useOwnedAssemblies } from "@/hooks/use-owned-assemblies";
 import {
   useRegisterCorridor,
   useSetTollConfig,
   useEmergencyControl,
   useCorridorStatus,
   useWithdrawRevenue,
+  useDepotConfig,
 } from "@/hooks/use-fen-transactions";
-import { formatSui, statusBg } from "@/lib/utils";
-import { Plus, Settings, Shield, AlertTriangle, DollarSign, Power, Loader2, CheckCircle, XCircle, Wallet } from "lucide-react";
+import { formatSui, formatPercent, statusBg, abbreviateAddress } from "@/lib/utils";
+import { AssemblyPicker } from "@/components/AssemblyPicker";
+import {
+  Plus, Settings, Shield, AlertTriangle, DollarSign, Power,
+  Loader2, CheckCircle, XCircle, Wallet, ArrowRight, Package,
+  Zap, ChevronRight,
+} from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 
 function TxStatusBadge({ status, error }: { status: string; error: string | null }) {
@@ -27,27 +35,50 @@ function TxStatusBadge({ status, error }: { status: string; error: string | null
   );
   if (status === "error") return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-eve-red" title={error || ""}>
-      <XCircle className="w-3 h-3" /> {error?.slice(0, 40) || "Failed"}
+      <XCircle className="w-3 h-3" /> {error?.slice(0, 60) || "Failed"}
     </span>
   );
   return null;
 }
 
+type Tab = "manage" | "create";
+type SetupStep = "tolls" | "depots" | "activate" | null;
+
 export default function OperatePage() {
-  const [tab, setTab] = useState<"manage" | "create">("manage");
-  const { corridors } = useCorridors();
-  const [selectedCorridor, setSelectedCorridor] = useState(corridors[0]?.id || "");
+  const [tab, setTab] = useState<Tab>("manage");
+  const { corridors, refetch: refetchCorridors } = useCorridors();
+  const { caps, refetch: refetchCaps } = useOwnerCaps();
+  const { gates, storageUnits, isLoading: assembliesLoading } = useOwnedAssemblies();
+  const [selectedCorridor, setSelectedCorridor] = useState("");
   const account = useCurrentAccount();
 
+  // Post-registration guided setup
+  const [setupStep, setSetupStep] = useState<SetupStep>(null);
+  const [setupCorridorId, setSetupCorridorId] = useState("");
+
+  // Select first corridor user owns by default
+  useEffect(() => {
+    if (!selectedCorridor && corridors.length > 0) {
+      // Prefer corridors the user owns
+      const owned = corridors.find((c) => caps.has(c.id));
+      setSelectedCorridor(owned?.id || corridors[0].id);
+    }
+  }, [corridors, caps, selectedCorridor]);
+
   const corridor = corridors.find((c) => c.id === selectedCorridor) || corridors[0];
+  const ownerCapId = corridor ? caps.get(corridor.id) : undefined;
+  const isOwner = !!ownerCapId;
   const totalRevenue = corridor ? corridor.totalTollRevenue + corridor.totalTradeRevenue : 0;
 
+  // Transaction hooks
   const { registerCorridor, status: regStatus, error: regError } = useRegisterCorridor();
   const { setTollConfig, status: tollStatus, error: tollError } = useSetTollConfig();
   const { emergencyLock, emergencyUnlock, status: emStatus, error: emError } = useEmergencyControl();
   const { activateCorridor, deactivateCorridor, status: csStatus, error: csError } = useCorridorStatus();
   const { withdrawAll, status: wdStatus, error: wdError } = useWithdrawRevenue();
+  const { setDepotConfig, activateDepot, status: depotStatus, error: depotError } = useDepotConfig();
 
+  // Create form state
   const [createForm, setCreateForm] = useState({
     name: "",
     sourceGateId: "",
@@ -57,10 +88,69 @@ export default function OperatePage() {
     feeRecipient: "",
   });
 
-  const handleCreate = () => {
+  // Auto-fill fee recipient with connected wallet address
+  useEffect(() => {
+    if (account?.address && !createForm.feeRecipient) {
+      setCreateForm((f) => ({ ...f, feeRecipient: account.address }));
+    }
+  }, [account?.address]);
+
+  // Toll config form state for manage tab
+  const [tollFormA, setTollFormA] = useState({ amount: "" });
+  const [tollFormB, setTollFormB] = useState({ amount: "" });
+
+  // Sync toll form values when corridor changes
+  useEffect(() => {
+    if (corridor) {
+      setTollFormA({ amount: String(corridor.sourceGate.tollAmount / 1_000_000_000 || "") });
+      setTollFormB({ amount: String(corridor.destGate.tollAmount / 1_000_000_000 || "") });
+    }
+  }, [corridor?.id, corridor?.sourceGate.tollAmount, corridor?.destGate.tollAmount]);
+
+  // Depot config form state
+  const [depotFormA, setDepotFormA] = useState({ inputTypeId: "", outputTypeId: "", ratioIn: "", ratioOut: "", feeBps: "" });
+  const [depotFormB, setDepotFormB] = useState({ inputTypeId: "", outputTypeId: "", ratioIn: "", ratioOut: "", feeBps: "" });
+
+  useEffect(() => {
+    if (corridor) {
+      setDepotFormA({
+        inputTypeId: String(corridor.depotA.inputItem.typeId || ""),
+        outputTypeId: String(corridor.depotA.outputItem.typeId || ""),
+        ratioIn: String(corridor.depotA.ratioIn || ""),
+        ratioOut: String(corridor.depotA.ratioOut || ""),
+        feeBps: String(corridor.depotA.feeBps || ""),
+      });
+      setDepotFormB({
+        inputTypeId: String(corridor.depotB.inputItem.typeId || ""),
+        outputTypeId: String(corridor.depotB.outputItem.typeId || ""),
+        ratioIn: String(corridor.depotB.ratioIn || ""),
+        ratioOut: String(corridor.depotB.ratioOut || ""),
+        feeBps: String(corridor.depotB.feeBps || ""),
+      });
+    }
+  }, [corridor?.id]);
+
+  const handleCreate = async () => {
     if (!account) return;
-    registerCorridor(createForm);
+    const result = await registerCorridor(createForm);
+    if (result) {
+      // Refresh data and switch to setup flow
+      setTimeout(() => {
+        refetchCorridors();
+        refetchCaps();
+        setTab("manage");
+        setSetupStep("tolls");
+      }, 2000);
+    }
   };
+
+  // Form validation
+  const isFormValid = createForm.name.trim().length > 0
+    && createForm.sourceGateId.startsWith("0x")
+    && createForm.destGateId.startsWith("0x")
+    && createForm.depotAId.startsWith("0x")
+    && createForm.depotBId.startsWith("0x")
+    && createForm.feeRecipient.startsWith("0x");
 
   if (!account) {
     return (
@@ -92,7 +182,7 @@ export default function OperatePage() {
       {/* Tab bar */}
       <div className="flex gap-1 p-1 bg-eve-surface border border-eve-border rounded-xl w-fit">
         <button
-          onClick={() => setTab("manage")}
+          onClick={() => { setTab("manage"); setSetupStep(null); }}
           className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${
             tab === "manage" ? "bg-eve-elevated text-eve-text shadow-sm" : "text-eve-text-dim hover:text-eve-text"
           }`}
@@ -100,7 +190,7 @@ export default function OperatePage() {
           <Settings className="w-4 h-4 inline mr-2" /> Manage
         </button>
         <button
-          onClick={() => setTab("create")}
+          onClick={() => { setTab("create"); setSetupStep(null); }}
           className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${
             tab === "create" ? "bg-eve-elevated text-eve-text shadow-sm" : "text-eve-text-dim hover:text-eve-text"
           }`}
@@ -124,30 +214,80 @@ export default function OperatePage() {
             {/* Corridor selector */}
             <div className="space-y-2">
               <h3 className="section-title mb-3">Your Corridors</h3>
-              {corridors.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCorridor(c.id)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all duration-150 ${
-                    selectedCorridor === c.id
-                      ? "border-eve-orange/40 bg-eve-orange/5"
-                      : "border-eve-border hover:border-eve-border/80 bg-eve-surface hover:bg-eve-elevated/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold">{c.name}</span>
-                    <span className={`badge ${statusBg(c.status)}`}>{c.status}</span>
-                  </div>
-                  <div className="text-xs text-eve-text-dim mt-1.5">
-                    {c.sourceGate.solarSystem || "Source"} → {c.destGate.solarSystem || "Dest"}
-                  </div>
-                </button>
-              ))}
+              {corridors.map((c) => {
+                const owned = caps.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { setSelectedCorridor(c.id); setSetupStep(null); }}
+                    className={`w-full text-left p-4 rounded-xl border transition-all duration-150 ${
+                      selectedCorridor === c.id
+                        ? "border-eve-orange/40 bg-eve-orange/5"
+                        : "border-eve-border hover:border-eve-border/80 bg-eve-surface hover:bg-eve-elevated/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold">{c.name}</span>
+                      <div className="flex items-center gap-2">
+                        {owned && (
+                          <span className="text-[10px] text-eve-orange font-medium px-1.5 py-0.5 bg-eve-orange/10 rounded">
+                            OWNER
+                          </span>
+                        )}
+                        <span className={`badge ${statusBg(c.status)}`}>{c.status}</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-eve-text-dim mt-1.5 flex items-center gap-1">
+                      {abbreviateAddress(c.sourceGate.id)} <ArrowRight className="w-3 h-3 text-eve-muted" /> {abbreviateAddress(c.destGate.id)}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Config panels */}
             {corridor && (
               <div className="lg:col-span-2 space-y-5">
+                {/* Owner warning */}
+                {!isOwner && (
+                  <div className="p-4 bg-eve-yellow/5 border border-eve-yellow/20 rounded-xl">
+                    <p className="text-xs text-eve-yellow font-medium">
+                      You don't own this corridor. Only the owner ({abbreviateAddress(corridor.owner)}) can modify its configuration.
+                    </p>
+                  </div>
+                )}
+
+                {/* Setup wizard banner */}
+                {setupStep && isOwner && (
+                  <div className="p-4 bg-eve-orange/5 border border-eve-orange/20 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ChevronRight className="w-4 h-4 text-eve-orange" />
+                      <span className="text-sm font-semibold text-eve-orange">Setup Guide</span>
+                    </div>
+                    <div className="flex gap-3 text-xs">
+                      {(["tolls", "depots", "activate"] as const).map((step, i) => (
+                        <button
+                          key={step}
+                          onClick={() => setSetupStep(step)}
+                          className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                            setupStep === step
+                              ? "bg-eve-orange text-eve-bg"
+                              : "bg-eve-elevated text-eve-text-dim hover:text-eve-text"
+                          }`}
+                        >
+                          {i + 1}. {step === "tolls" ? "Set Tolls" : step === "depots" ? "Configure Depots" : "Activate"}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setSetupStep(null)}
+                        className="text-eve-muted hover:text-eve-text ml-auto"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Revenue */}
                 <div className="card p-6">
                   <div className="flex items-center justify-between mb-5">
@@ -158,8 +298,9 @@ export default function OperatePage() {
                       <TxStatusBadge status={wdStatus} error={wdError} />
                       <button
                         className="btn-primary text-xs py-2"
-                        disabled={wdStatus === "pending"}
-                        onClick={() => withdrawAll(corridor.id, "0x0")}
+                        disabled={wdStatus === "pending" || !isOwner}
+                        onClick={() => ownerCapId && withdrawAll(corridor.id, ownerCapId)}
+                        title={!isOwner ? "Only the corridor owner can withdraw" : ""}
                       >
                         {wdStatus === "pending" ? "Withdrawing..." : "Withdraw All"}
                       </button>
@@ -191,23 +332,31 @@ export default function OperatePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-5">
                     <div>
-                      <label className="label">Gate A Toll</label>
+                      <label className="label">Gate A Toll ({abbreviateAddress(corridor.sourceGate.id)})</label>
                       <div className="flex gap-2">
                         <input
                           type="number"
-                          defaultValue={corridor.sourceGate.tollAmount / 1_000_000_000}
+                          value={tollFormA.amount}
+                          onChange={(e) => setTollFormA({ amount: e.target.value })}
                           className="input-field text-[13px] flex-1"
+                          placeholder="0.1"
+                          step="0.01"
+                          disabled={!isOwner}
                         />
                         <span className="text-xs text-eve-muted self-center">SUI</span>
                       </div>
                     </div>
                     <div>
-                      <label className="label">Gate B Toll</label>
+                      <label className="label">Gate B Toll ({abbreviateAddress(corridor.destGate.id)})</label>
                       <div className="flex gap-2">
                         <input
                           type="number"
-                          defaultValue={corridor.destGate.tollAmount / 1_000_000_000}
+                          value={tollFormB.amount}
+                          onChange={(e) => setTollFormB({ amount: e.target.value })}
                           className="input-field text-[13px] flex-1"
+                          placeholder="0.1"
+                          step="0.01"
+                          disabled={!isOwner}
                         />
                         <span className="text-xs text-eve-muted self-center">SUI</span>
                       </div>
@@ -218,24 +367,35 @@ export default function OperatePage() {
                         <span className={`badge ${corridor.sourceGate.surgeActive ? "badge-surge" : "badge-inactive"}`}>
                           {corridor.sourceGate.surgeActive ? "Active" : "Inactive"}
                         </span>
-                        <input
-                          type="number"
-                          defaultValue={corridor.sourceGate.surgeMultiplier / 100}
-                          className="input-field text-[13px] w-20"
-                          step={5}
-                        />
-                        <span className="text-xs text-eve-muted">%</span>
+                        {corridor.sourceGate.surgeActive && (
+                          <span className="text-xs text-eve-orange font-medium">
+                            <Zap className="w-3 h-3 inline" /> {corridor.sourceGate.surgeMultiplier / 100}%
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-end">
+                    <div className="flex items-end gap-2">
                       <button
-                        className="btn-primary w-full"
-                        disabled={tollStatus === "pending"}
+                        className="btn-primary flex-1"
+                        disabled={tollStatus === "pending" || !isOwner}
                         onClick={() => {
-                          setTollConfig(corridor.id, "0x0", corridor.sourceGate.id, corridor.sourceGate.tollAmount);
+                          if (!ownerCapId) return;
+                          const amountA = Math.floor(Number(tollFormA.amount) * 1_000_000_000);
+                          setTollConfig(corridor.id, ownerCapId, corridor.sourceGate.id, amountA);
                         }}
                       >
-                        {tollStatus === "pending" ? "Updating..." : "Update Tolls"}
+                        {tollStatus === "pending" ? "Updating..." : "Update Gate A"}
+                      </button>
+                      <button
+                        className="btn-primary flex-1"
+                        disabled={tollStatus === "pending" || !isOwner}
+                        onClick={() => {
+                          if (!ownerCapId) return;
+                          const amountB = Math.floor(Number(tollFormB.amount) * 1_000_000_000);
+                          setTollConfig(corridor.id, ownerCapId, corridor.destGate.id, amountB);
+                        }}
+                      >
+                        {tollStatus === "pending" ? "Updating..." : "Update Gate B"}
                       </button>
                     </div>
                   </div>
@@ -243,61 +403,149 @@ export default function OperatePage() {
 
                 {/* Depot config */}
                 <div className="card p-6">
-                  <h3 className="flex items-center gap-2 text-[13px] font-semibold mb-5">
-                    <Settings className="w-4 h-4 text-eve-orange" /> Depot Configuration
-                  </h3>
-                  {[corridor.depotA, corridor.depotB].map((depot, i) => (
-                    <div key={depot.id || i} className="mb-4 last:mb-0 p-4 bg-eve-bg rounded-xl">
-                      <div className="text-xs font-semibold text-eve-text-dim mb-3">
-                        Depot {i === 0 ? "A" : "B"}{depot.name ? `: ${depot.name}` : ""}
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="flex items-center gap-2 text-[13px] font-semibold">
+                      <Package className="w-4 h-4 text-eve-orange" /> Depot Configuration
+                    </h3>
+                    <TxStatusBadge status={depotStatus} error={depotError} />
+                  </div>
+                  {[
+                    { depot: corridor.depotA, label: "A", form: depotFormA, setForm: setDepotFormA },
+                    { depot: corridor.depotB, label: "B", form: depotFormB, setForm: setDepotFormB },
+                  ].map(({ depot, label, form, setForm }) => (
+                    <div key={depot.id || label} className="mb-4 last:mb-0 p-4 bg-eve-bg rounded-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-xs font-semibold text-eve-text-dim">
+                          Depot {label} ({abbreviateAddress(depot.id)})
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`badge ${depot.isActive ? "badge-active" : "badge-inactive"}`}>
+                            {depot.isActive ? "Active" : "Inactive"}
+                          </span>
+                          {isOwner && (
+                            <button
+                              className={`text-[10px] font-medium px-2 py-1 rounded ${
+                                depot.isActive
+                                  ? "text-eve-red hover:bg-eve-red/10"
+                                  : "text-eve-green hover:bg-eve-green/10"
+                              }`}
+                              onClick={() => {
+                                if (!ownerCapId) return;
+                                if (depot.isActive) {
+                                  // deactivateDepot
+                                } else {
+                                  activateDepot(corridor.id, ownerCapId, depot.id);
+                                }
+                              }}
+                            >
+                              {depot.isActive ? "Deactivate" : "Activate"}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 gap-4">
+                      <div className="grid grid-cols-5 gap-3">
                         <div>
-                          <label className="label">Input</label>
-                          <div className="text-[13px] font-medium">{depot.inputItem.name || "—"}</div>
+                          <label className="label">Input Type ID</label>
+                          <input
+                            type="number"
+                            value={form.inputTypeId}
+                            onChange={(e) => setForm({ ...form, inputTypeId: e.target.value })}
+                            className="input-field text-[13px]"
+                            disabled={!isOwner}
+                          />
                         </div>
                         <div>
-                          <label className="label">Output</label>
-                          <div className="text-[13px] font-medium">{depot.outputItem.name || "—"}</div>
+                          <label className="label">Output Type ID</label>
+                          <input
+                            type="number"
+                            value={form.outputTypeId}
+                            onChange={(e) => setForm({ ...form, outputTypeId: e.target.value })}
+                            className="input-field text-[13px]"
+                            disabled={!isOwner}
+                          />
                         </div>
                         <div>
-                          <label className="label">Ratio</label>
-                          <div className="flex gap-1 items-center">
-                            <input type="number" defaultValue={depot.ratioIn} className="input-field text-[13px] w-14" />
-                            <span className="text-eve-muted">:</span>
-                            <input type="number" defaultValue={depot.ratioOut} className="input-field text-[13px] w-14" />
-                          </div>
+                          <label className="label">Ratio In</label>
+                          <input
+                            type="number"
+                            value={form.ratioIn}
+                            onChange={(e) => setForm({ ...form, ratioIn: e.target.value })}
+                            className="input-field text-[13px]"
+                            disabled={!isOwner}
+                          />
                         </div>
                         <div>
-                          <label className="label">Fee</label>
-                          <div className="flex gap-1 items-center">
-                            <input type="number" defaultValue={depot.feeBps / 100} step={0.1} className="input-field text-[13px] w-16" />
-                            <span className="text-xs text-eve-muted">%</span>
-                          </div>
+                          <label className="label">Ratio Out</label>
+                          <input
+                            type="number"
+                            value={form.ratioOut}
+                            onChange={(e) => setForm({ ...form, ratioOut: e.target.value })}
+                            className="input-field text-[13px]"
+                            disabled={!isOwner}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Fee (bps)</label>
+                          <input
+                            type="number"
+                            value={form.feeBps}
+                            onChange={(e) => setForm({ ...form, feeBps: e.target.value })}
+                            className="input-field text-[13px]"
+                            disabled={!isOwner}
+                          />
                         </div>
                       </div>
+                      {isOwner && (
+                        <button
+                          className="btn-primary text-xs mt-3"
+                          disabled={depotStatus === "pending"}
+                          onClick={() => {
+                            if (!ownerCapId) return;
+                            setDepotConfig({
+                              corridorId: corridor.id,
+                              ownerCapId,
+                              storageUnitId: depot.id,
+                              inputTypeId: Number(form.inputTypeId),
+                              outputTypeId: Number(form.outputTypeId),
+                              ratioIn: Number(form.ratioIn),
+                              ratioOut: Number(form.ratioOut),
+                              feeBps: Number(form.feeBps),
+                            });
+                          }}
+                        >
+                          {depotStatus === "pending" ? "Saving..." : `Update Depot ${label}`}
+                        </button>
+                      )}
                     </div>
                   ))}
-                  <button className="btn-primary text-[13px] mt-3">Update Depots</button>
                 </div>
 
-                {/* Emergency */}
+                {/* Status + Emergency */}
                 <div className="card p-6 border-eve-red/15">
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="flex items-center gap-2 text-[13px] font-semibold text-eve-red">
-                      <AlertTriangle className="w-4 h-4" /> Emergency Controls
+                      <AlertTriangle className="w-4 h-4" /> Status & Emergency Controls
                     </h3>
                     <TxStatusBadge status={emStatus || csStatus} error={emError || csError} />
+                  </div>
+                  <div className="flex items-center gap-2 mb-4 text-xs text-eve-text-dim">
+                    <span>Current status:</span>
+                    <span className={`badge ${statusBg(corridor.status)}`}>{corridor.status}</span>
+                    <span className="text-eve-muted">|</span>
+                    <span>Owner: {abbreviateAddress(corridor.owner)}</span>
+                    <span className="text-eve-muted">|</span>
+                    <span>Fee recipient: {abbreviateAddress(corridor.feeRecipient)}</span>
                   </div>
                   <div className="flex gap-3">
                     <button
                       className="btn-danger flex items-center gap-2"
-                      disabled={emStatus === "pending"}
+                      disabled={emStatus === "pending" || !isOwner}
                       onClick={() => {
+                        if (!ownerCapId) return;
                         if (corridor.status === "emergency") {
-                          emergencyUnlock(corridor.id, "0x0");
+                          emergencyUnlock(corridor.id, ownerCapId);
                         } else {
-                          emergencyLock(corridor.id, "0x0");
+                          emergencyLock(corridor.id, ownerCapId);
                         }
                       }}
                     >
@@ -306,24 +554,31 @@ export default function OperatePage() {
                     </button>
                     <button
                       className="btn-secondary"
-                      disabled={csStatus === "pending"}
+                      disabled={csStatus === "pending" || !isOwner}
                       onClick={() => {
+                        if (!ownerCapId) return;
                         if (corridor.status === "inactive") {
-                          activateCorridor(corridor.id, "0x0");
-                        } else {
-                          deactivateCorridor(corridor.id, "0x0");
+                          activateCorridor(corridor.id, ownerCapId);
+                        } else if (corridor.status === "active") {
+                          deactivateCorridor(corridor.id, ownerCapId);
                         }
                       }}
                     >
                       {corridor.status === "inactive" ? "Activate Corridor" : "Deactivate Corridor"}
                     </button>
                   </div>
+                  {!isOwner && (
+                    <p className="text-[10px] text-eve-muted mt-3">
+                      Only the corridor owner can perform these actions.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
           </div>
         )
       ) : (
+        /* ========== CREATE TAB ========== */
         <div className="card p-8 max-w-2xl">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -332,79 +587,122 @@ export default function OperatePage() {
             </div>
             <TxStatusBadge status={regStatus} error={regError} />
           </div>
-          <div className="space-y-5">
-            <div>
-              <label className="label">Corridor Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Helios Express"
-                className="input-field"
-                value={createForm.name}
-                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-              />
+
+          {regStatus === "success" ? (
+            <div className="text-center py-8">
+              <CheckCircle className="w-12 h-12 text-eve-green mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-eve-green mb-2">Corridor Registered!</h3>
+              <p className="text-sm text-eve-text-dim mb-6 max-w-sm mx-auto">
+                Your corridor has been created. A CorridorOwnerCap has been sent to your wallet.
+                Now configure your tolls and depots to make it live.
+              </p>
+              <button
+                onClick={() => {
+                  setTab("manage");
+                  setSetupStep("tolls");
+                  refetchCorridors();
+                  refetchCaps();
+                }}
+                className="btn-primary"
+              >
+                Configure Corridor <ChevronRight className="w-4 h-4 inline ml-1" />
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-5">
+          ) : (
+            <div className="space-y-5">
               <div>
-                <label className="label">Source Gate ID</label>
+                <label className="label">Corridor Name</label>
                 <input
                   type="text"
-                  placeholder="0x..."
-                  className="input-field font-mono text-xs"
+                  placeholder="e.g. Helios Express"
+                  className="input-field"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <AssemblyPicker
+                  label="Source Gate"
+                  assemblies={gates}
+                  isLoading={assembliesLoading}
                   value={createForm.sourceGateId}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, sourceGateId: e.target.value }))}
+                  onChange={(id) => setCreateForm((f) => ({ ...f, sourceGateId: id }))}
+                  type="gate"
                 />
-              </div>
-              <div>
-                <label className="label">Destination Gate ID</label>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  className="input-field font-mono text-xs"
+                <AssemblyPicker
+                  label="Destination Gate"
+                  assemblies={gates.filter((g) => g.id !== createForm.sourceGateId)}
+                  isLoading={assembliesLoading}
                   value={createForm.destGateId}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, destGateId: e.target.value }))}
+                  onChange={(id) => setCreateForm((f) => ({ ...f, destGateId: id }))}
+                  type="gate"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-5">
-              <div>
-                <label className="label">Depot A (SSU) ID</label>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  className="input-field font-mono text-xs"
+
+              <div className="grid grid-cols-2 gap-5">
+                <AssemblyPicker
+                  label="Depot A (Storage Unit)"
+                  assemblies={storageUnits}
+                  isLoading={assembliesLoading}
                   value={createForm.depotAId}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, depotAId: e.target.value }))}
+                  onChange={(id) => setCreateForm((f) => ({ ...f, depotAId: id }))}
+                  type="storage_unit"
+                />
+                <AssemblyPicker
+                  label="Depot B (Storage Unit)"
+                  assemblies={storageUnits.filter((s) => s.id !== createForm.depotAId)}
+                  isLoading={assembliesLoading}
+                  value={createForm.depotBId}
+                  onChange={(id) => setCreateForm((f) => ({ ...f, depotBId: id }))}
+                  type="storage_unit"
                 />
               </div>
+
               <div>
-                <label className="label">Depot B (SSU) ID</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="label mb-0">Fee Recipient Address</label>
+                  {account && createForm.feeRecipient !== account.address && (
+                    <button
+                      type="button"
+                      onClick={() => setCreateForm((f) => ({ ...f, feeRecipient: account.address }))}
+                      className="text-[10px] text-eve-orange hover:text-eve-orange-light transition-colors"
+                    >
+                      Use my wallet
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   placeholder="0x..."
                   className="input-field font-mono text-xs"
-                  value={createForm.depotBId}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, depotBId: e.target.value }))}
+                  value={createForm.feeRecipient}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, feeRecipient: e.target.value }))}
                 />
+                {account && createForm.feeRecipient === account.address && (
+                  <p className="text-[10px] text-eve-text-dim mt-1">Using your connected wallet address</p>
+                )}
               </div>
+
+              <button
+                className="btn-primary w-full"
+                disabled={regStatus === "pending" || !isFormValid}
+                onClick={handleCreate}
+              >
+                {regStatus === "pending" ? (
+                  <><Loader2 className="w-4 h-4 inline animate-spin mr-2" /> Registering...</>
+                ) : (
+                  "Register Corridor"
+                )}
+              </button>
+
+              {!isFormValid && createForm.name && (
+                <p className="text-[10px] text-eve-muted text-center">
+                  All fields must be valid Sui addresses (starting with 0x)
+                </p>
+              )}
             </div>
-            <div>
-              <label className="label">Fee Recipient Address</label>
-              <input
-                type="text"
-                placeholder="0x..."
-                className="input-field font-mono text-xs"
-                value={createForm.feeRecipient}
-                onChange={(e) => setCreateForm((f) => ({ ...f, feeRecipient: e.target.value }))}
-              />
-            </div>
-            <button
-              className="btn-primary w-full"
-              disabled={regStatus === "pending" || !createForm.name}
-              onClick={handleCreate}
-            >
-              {regStatus === "pending" ? "Registering..." : "Register Corridor"}
-            </button>
-          </div>
+          )}
         </div>
       )}
     </div>
