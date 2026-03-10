@@ -56,3 +56,7 @@ export function statusBg(status: string): string {
     default: return "badge-inactive";
   }
 }
+
+export function explorerUrl(type: "tx" | "object" | "address", id: string): string {
+  return `https://suiscan.xyz/testnet/${type === "tx" ? "tx" : type === "object" ? "object" : "account"}/${id}`;
+}

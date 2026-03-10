@@ -3,9 +3,10 @@
 import { use } from "react";
 import Link from "next/link";
 import { useCorridor, useActivity, useChartData, usePoolConfigs } from "@/hooks/use-corridors";
-import { formatSui, formatNumber, formatPercent, abbreviateAddress, timeAgo, statusBg } from "@/lib/utils";
-import { ArrowRight, ArrowLeft, Shield, Zap, Package, Loader2, AlertCircle, Droplets } from "lucide-react";
+import { formatSui, formatNumber, formatPercent, abbreviateAddress, timeAgo, statusBg, explorerUrl } from "@/lib/utils";
+import { ArrowRight, ArrowLeft, Shield, Zap, Package, AlertCircle, Droplets, ExternalLink } from "lucide-react";
 import { VolumeChart } from "@/components/dashboard/VolumeChart";
+import { SkeletonStatsGrid, SkeletonChart, SkeletonActivityList, Skeleton } from "@/components/ui/Skeleton";
 
 export default function CorridorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -20,15 +21,35 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-5 h-5 text-eve-muted animate-spin" />
+      <div className="space-y-8 max-w-[1400px]">
+        <div className="flex items-center gap-4">
+          <Skeleton className="w-10 h-10 rounded-lg" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="card p-6">
+          <div className="grid grid-cols-5 gap-4 items-center">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="text-center">
+                <Skeleton className="h-32 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <SkeletonStatsGrid />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2"><SkeletonChart /></div>
+          <SkeletonActivityList />
+        </div>
       </div>
     );
   }
 
   if (!corridor) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
+      <div className="flex flex-col items-center justify-center h-64 text-center animate-slide-up">
         <div className="w-12 h-12 rounded-xl bg-eve-elevated flex items-center justify-center mb-3">
           <AlertCircle className="w-6 h-6 text-eve-muted" />
         </div>
@@ -53,15 +74,34 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
               {corridor.status}
             </span>
           </div>
-          <p className="text-sm text-eve-text-dim mt-0.5">
-            Operated by {abbreviateAddress(corridor.owner)}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-eve-text-dim">
+              Operated by{" "}
+              <a
+                href={explorerUrl("address", corridor.owner)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-eve-orange hover:text-eve-orange-light transition-colors inline-flex items-center gap-1"
+              >
+                {abbreviateAddress(corridor.owner)}
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </p>
+          </div>
         </div>
+        <a
+          href={explorerUrl("object", corridor.id)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-ghost text-xs inline-flex items-center gap-1.5"
+        >
+          View on Explorer <ExternalLink className="w-3 h-3" />
+        </a>
       </div>
 
       {/* Route visualization */}
       <div className="card p-6">
-        <div className="grid grid-cols-5 gap-4 items-center">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-center">
           <div className="text-center">
             <div className="card-elevated p-4">
               <div className="w-10 h-10 rounded-xl bg-eve-orange/10 flex items-center justify-center mx-auto mb-3">
@@ -98,7 +138,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
+          <div className="hidden md:flex flex-col items-center gap-2">
             <ArrowRight className="w-8 h-8 text-eve-orange" />
             <div className="text-[10px] text-eve-text-faint uppercase tracking-wider font-medium">linked</div>
             <ArrowLeft className="w-8 h-8 text-eve-orange" />

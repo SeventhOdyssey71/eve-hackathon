@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCorridors } from "@/hooks/use-corridors";
-import { formatSui, formatNumber, timeAgo, statusBg } from "@/lib/utils";
-import { ArrowRight, Zap, Route, Loader2 } from "lucide-react";
+import { formatSui, formatNumber, timeAgo, statusBg, explorerUrl } from "@/lib/utils";
+import { ArrowRight, Zap, Route, ExternalLink } from "lucide-react";
+import { SkeletonCorridorList } from "@/components/ui/Skeleton";
 
 export default function CorridorsPage() {
   const { corridors, isLoading } = useCorridors();
@@ -21,11 +22,9 @@ export default function CorridorsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-40">
-          <Loader2 className="w-5 h-5 text-eve-muted animate-spin" />
-        </div>
+        <SkeletonCorridorList />
       ) : corridors.length === 0 ? (
-        <div className="card flex flex-col items-center justify-center py-20 text-center">
+        <div className="card flex flex-col items-center justify-center py-20 text-center animate-slide-up">
           <div className="w-14 h-14 rounded-2xl bg-eve-elevated flex items-center justify-center mb-4">
             <Route className="w-7 h-7 text-eve-muted" />
           </div>
@@ -65,7 +64,7 @@ export default function CorridorsPage() {
                     <span className="text-eve-text font-medium">{c.destGate.solarSystem}</span>
                   </div>
 
-                  <div className="flex gap-6 text-xs text-eve-text-dim">
+                  <div className="flex flex-wrap gap-4 md:gap-6 text-xs text-eve-text-dim">
                     <div>
                       <span className="text-eve-muted">Depot A:</span>{" "}
                       {c.depotA.inputItem.name} → {c.depotA.outputItem.name}{" "}
@@ -79,7 +78,7 @@ export default function CorridorsPage() {
                   </div>
                 </div>
 
-                <div className="text-right space-y-1 shrink-0 ml-8">
+                <div className="text-right space-y-1 shrink-0 ml-4 md:ml-8">
                   <div className="text-base font-semibold text-eve-orange">
                     {formatSui(c.totalTollRevenue + c.totalTradeRevenue)}
                   </div>
