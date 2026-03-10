@@ -21,6 +21,11 @@ import {
   buildWithdraw,
   buildActivateDepot,
   buildDeactivateDepot,
+  buildCreatePool,
+  buildActivatePool,
+  buildDeactivatePool,
+  buildAddLiquidity,
+  buildRemoveLiquidity,
 } from "@/lib/transactions";
 import type { Transaction } from "@mysten/sui/transactions";
 
@@ -297,6 +302,93 @@ export function useTreasury() {
   );
 
   return { createTreasury, withdraw, withdrawAll, ...rest };
+}
+
+// --- AMM Pool Hooks ---
+
+export function usePoolManagement() {
+  const { execute, ...rest } = useFenTx();
+
+  const createPool = useCallback(
+    (params: {
+      corridorId: string;
+      ownerCapId: string;
+      storageUnitId: string;
+      itemTypeId: number;
+      feeBps: number;
+      initialSuiAmount: number;
+      initialItems: number;
+    }) =>
+      execute(() =>
+        buildCreatePool({
+          packageId: rest.packageId,
+          ...params,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const activatePool = useCallback(
+    (corridorId: string, ownerCapId: string, storageUnitId: string) =>
+      execute(() =>
+        buildActivatePool({
+          packageId: rest.packageId,
+          corridorId,
+          ownerCapId,
+          storageUnitId,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const deactivatePool = useCallback(
+    (corridorId: string, ownerCapId: string, storageUnitId: string) =>
+      execute(() =>
+        buildDeactivatePool({
+          packageId: rest.packageId,
+          corridorId,
+          ownerCapId,
+          storageUnitId,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const addLiquidity = useCallback(
+    (params: {
+      corridorId: string;
+      ownerCapId: string;
+      storageUnitId: string;
+      suiAmount: number;
+      additionalItems: number;
+    }) =>
+      execute(() =>
+        buildAddLiquidity({
+          packageId: rest.packageId,
+          ...params,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const removeLiquidity = useCallback(
+    (params: {
+      corridorId: string;
+      ownerCapId: string;
+      storageUnitId: string;
+      suiAmount: number;
+      itemsToRemove: number;
+    }) =>
+      execute(() =>
+        buildRemoveLiquidity({
+          packageId: rest.packageId,
+          ...params,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  return { createPool, activatePool, deactivatePool, addLiquidity, removeLiquidity, ...rest };
 }
 
 // --- DeepBook Hooks ---

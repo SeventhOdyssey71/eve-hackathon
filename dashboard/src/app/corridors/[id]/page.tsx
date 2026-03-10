@@ -2,9 +2,9 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { useCorridor, useActivity, useChartData } from "@/hooks/use-corridors";
+import { useCorridor, useActivity, useChartData, usePoolConfigs } from "@/hooks/use-corridors";
 import { formatSui, formatNumber, formatPercent, abbreviateAddress, timeAgo, statusBg } from "@/lib/utils";
-import { ArrowRight, ArrowLeft, Shield, Zap, Package, Loader2, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Shield, Zap, Package, Loader2, AlertCircle, Droplets } from "lucide-react";
 import { VolumeChart } from "@/components/dashboard/VolumeChart";
 
 export default function CorridorDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +12,11 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   const { corridor, isLoading } = useCorridor(id);
   const { events } = useActivity(id);
   const { data: chartData } = useChartData();
+  const { poolA, poolB } = usePoolConfigs(
+    corridor?.id || "",
+    corridor?.depotA.id || "",
+    corridor?.depotB.id || "",
+  );
 
   if (isLoading) {
     return (
@@ -147,6 +152,54 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
           </div>
         ))}
       </div>
+
+      {/* AMM Pools */}
+      {(poolA || poolB) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[
+            { pool: poolA, label: "Pool A (Depot A)" },
+            { pool: poolB, label: "Pool B (Depot B)" },
+          ].filter(({ pool }) => pool).map(({ pool, label }) => (
+            <div key={label} className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="flex items-center gap-2 text-[13px] font-semibold">
+                  <Droplets className="w-4 h-4 text-eve-orange" /> {label}
+                </h3>
+                <span className={`badge ${pool!.isActive ? "badge-active" : "badge-inactive"}`}>
+                  {pool!.isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="stat-label">SUI Reserve</div>
+                  <div className="text-lg font-semibold text-eve-orange mt-1">{formatSui(pool!.reserveSui)}</div>
+                </div>
+                <div>
+                  <div className="stat-label">Item Reserve</div>
+                  <div className="text-lg font-semibold mt-1">{formatNumber(pool!.reserveItems)}</div>
+                </div>
+                <div>
+                  <div className="stat-label">Spot Price</div>
+                  <div className="text-sm font-medium mt-1">
+                    {pool!.reserveItems > 0
+                      ? `${(pool!.reserveSui / pool!.reserveItems / 1_000_000_000).toFixed(4)} SUI/item`
+                      : "N/A"}
+                  </div>
+                </div>
+                <div>
+                  <div className="stat-label">Pool Fee</div>
+                  <div className="text-sm font-medium mt-1">{formatPercent(pool!.feeBps)}</div>
+                </div>
+              </div>
+              <div className="flex justify-between mt-4 pt-3 border-t border-eve-border text-xs text-eve-text-dim">
+                <span>{pool!.totalSwaps} swaps</span>
+                <span>Vol: {formatSui(pool!.totalSuiVolume)}</span>
+                <span>Fees: {formatSui(pool!.totalFeesCollected)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Chart + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

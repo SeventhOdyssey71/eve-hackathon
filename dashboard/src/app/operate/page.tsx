@@ -11,13 +11,15 @@ import {
   useCorridorStatus,
   useWithdrawRevenue,
   useDepotConfig,
+  usePoolManagement,
 } from "@/hooks/use-fen-transactions";
+import { usePoolConfigs } from "@/hooks/use-corridors";
 import { formatSui, formatPercent, statusBg, abbreviateAddress } from "@/lib/utils";
 import { AssemblyPicker } from "@/components/AssemblyPicker";
 import {
   Plus, Settings, Shield, AlertTriangle, DollarSign, Power,
   Loader2, CheckCircle, XCircle, Wallet, ArrowRight, Package,
-  Zap, ChevronRight,
+  Zap, ChevronRight, Droplets,
 } from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 
@@ -76,7 +78,23 @@ export default function OperatePage() {
   const { emergencyLock, emergencyUnlock, status: emStatus, error: emError } = useEmergencyControl();
   const { activateCorridor, deactivateCorridor, status: csStatus, error: csError } = useCorridorStatus();
   const { withdrawAll, status: wdStatus, error: wdError } = useWithdrawRevenue();
-  const { setDepotConfig, activateDepot, status: depotStatus, error: depotError } = useDepotConfig();
+  const { setDepotConfig, activateDepot, deactivateDepot: deactivateDepotFn, status: depotStatus, error: depotError } = useDepotConfig();
+  const { createPool, activatePool, deactivatePool, addLiquidity, removeLiquidity, status: poolStatus, error: poolError } = usePoolManagement();
+
+  // Pool config from on-chain
+  const { poolA, poolB, isLoading: poolsLoading } = usePoolConfigs(
+    corridor?.id || "",
+    corridor?.depotA.id || "",
+    corridor?.depotB.id || "",
+  );
+
+  // Pool create form state
+  const [poolFormA, setPoolFormA] = useState({ itemTypeId: "", feeBps: "30", initialSui: "", initialItems: "" });
+  const [poolFormB, setPoolFormB] = useState({ itemTypeId: "", feeBps: "30", initialSui: "", initialItems: "" });
+
+  // Pool add liquidity state
+  const [liqFormA, setLiqFormA] = useState({ suiAmount: "", items: "" });
+  const [liqFormB, setLiqFormB] = useState({ suiAmount: "", items: "" });
 
   // Create form state
   const [createForm, setCreateForm] = useState({
@@ -432,7 +450,7 @@ export default function OperatePage() {
                               onClick={() => {
                                 if (!ownerCapId) return;
                                 if (depot.isActive) {
-                                  // deactivateDepot
+                                  deactivateDepotFn(corridor.id, ownerCapId, depot.id);
                                 } else {
                                   activateDepot(corridor.id, ownerCapId, depot.id);
                                 }
@@ -515,6 +533,196 @@ export default function OperatePage() {
                         >
                           {depotStatus === "pending" ? "Saving..." : `Update Depot ${label}`}
                         </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* AMM Liquidity Pools */}
+                <div className="card p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="flex items-center gap-2 text-[13px] font-semibold">
+                      <Droplets className="w-4 h-4 text-eve-orange" /> AMM Liquidity Pools
+                    </h3>
+                    <TxStatusBadge status={poolStatus} error={poolError} />
+                  </div>
+                  {[
+                    { depot: corridor.depotA, label: "A", pool: poolA, form: poolFormA, setForm: setPoolFormA, liq: liqFormA, setLiq: setLiqFormA },
+                    { depot: corridor.depotB, label: "B", pool: poolB, form: poolFormB, setForm: setPoolFormB, liq: liqFormB, setLiq: setLiqFormB },
+                  ].map(({ depot, label, pool, form, setForm, liq, setLiq }) => (
+                    <div key={depot.id || label} className="mb-4 last:mb-0 p-4 bg-eve-bg rounded-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-xs font-semibold text-eve-text-dim">
+                          Pool {label} ({abbreviateAddress(depot.id)})
+                        </div>
+                        {pool ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`badge ${pool.isActive ? "badge-active" : "badge-inactive"}`}>
+                              {pool.isActive ? "Active" : "Inactive"}
+                            </span>
+                            {isOwner && (
+                              <button
+                                className={`text-[10px] font-medium px-2 py-1 rounded ${
+                                  pool.isActive
+                                    ? "text-eve-red hover:bg-eve-red/10"
+                                    : "text-eve-green hover:bg-eve-green/10"
+                                }`}
+                                disabled={poolStatus === "pending"}
+                                onClick={() => {
+                                  if (!ownerCapId) return;
+                                  if (pool.isActive) {
+                                    deactivatePool(corridor.id, ownerCapId, depot.id);
+                                  } else {
+                                    activatePool(corridor.id, ownerCapId, depot.id);
+                                  }
+                                }}
+                              >
+                                {pool.isActive ? "Deactivate" : "Activate"}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="badge badge-inactive">No Pool</span>
+                        )}
+                      </div>
+
+                      {pool ? (
+                        <>
+                          {/* Pool stats */}
+                          <div className="grid grid-cols-4 gap-3 mb-3">
+                            <div className="text-center">
+                              <div className="text-[10px] text-eve-muted">SUI Reserve</div>
+                              <div className="text-xs font-semibold text-eve-text">{formatSui(pool.reserveSui)}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-[10px] text-eve-muted">Item Reserve</div>
+                              <div className="text-xs font-semibold text-eve-text">{pool.reserveItems}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-[10px] text-eve-muted">Fee</div>
+                              <div className="text-xs font-semibold text-eve-text">{formatPercent(pool.feeBps)}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-[10px] text-eve-muted">Swaps</div>
+                              <div className="text-xs font-semibold text-eve-text">{pool.totalSwaps}</div>
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-eve-muted mb-3">
+                            Item #{pool.itemTypeId} | Spot: {pool.reserveItems > 0
+                              ? (pool.reserveSui / pool.reserveItems / 1_000_000_000).toFixed(4)
+                              : "0"} SUI/item | Fees: {formatSui(pool.totalFeesCollected)}
+                          </div>
+                          {/* Add liquidity */}
+                          {isOwner && (
+                            <div className="border-t border-eve-border/40 pt-3">
+                              <div className="text-[10px] font-semibold text-eve-text-dim mb-2">Add Liquidity</div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <input
+                                    type="number"
+                                    value={liq.suiAmount}
+                                    onChange={(e) => setLiq({ ...liq, suiAmount: e.target.value })}
+                                    className="input-field text-[12px]"
+                                    placeholder="SUI amount"
+                                    step="0.1"
+                                  />
+                                </div>
+                                <div>
+                                  <input
+                                    type="number"
+                                    value={liq.items}
+                                    onChange={(e) => setLiq({ ...liq, items: e.target.value })}
+                                    className="input-field text-[12px]"
+                                    placeholder="Items"
+                                  />
+                                </div>
+                                <button
+                                  className="btn-primary text-[11px] py-2"
+                                  disabled={poolStatus === "pending"}
+                                  onClick={() => {
+                                    if (!ownerCapId) return;
+                                    addLiquidity({
+                                      corridorId: corridor.id,
+                                      ownerCapId,
+                                      storageUnitId: depot.id,
+                                      suiAmount: Math.floor(Number(liq.suiAmount) * 1_000_000_000),
+                                      additionalItems: Number(liq.items) || 0,
+                                    });
+                                  }}
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : isOwner ? (
+                        /* Create pool form */
+                        <div>
+                          <div className="grid grid-cols-4 gap-2 mb-2">
+                            <div>
+                              <label className="text-[10px] text-eve-muted block mb-1">Item Type ID</label>
+                              <input
+                                type="number"
+                                value={form.itemTypeId}
+                                onChange={(e) => setForm({ ...form, itemTypeId: e.target.value })}
+                                className="input-field text-[12px]"
+                                placeholder="e.g. 1001"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-eve-muted block mb-1">Fee (bps)</label>
+                              <input
+                                type="number"
+                                value={form.feeBps}
+                                onChange={(e) => setForm({ ...form, feeBps: e.target.value })}
+                                className="input-field text-[12px]"
+                                placeholder="30"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-eve-muted block mb-1">Initial SUI</label>
+                              <input
+                                type="number"
+                                value={form.initialSui}
+                                onChange={(e) => setForm({ ...form, initialSui: e.target.value })}
+                                className="input-field text-[12px]"
+                                placeholder="1.0"
+                                step="0.1"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-eve-muted block mb-1">Initial Items</label>
+                              <input
+                                type="number"
+                                value={form.initialItems}
+                                onChange={(e) => setForm({ ...form, initialItems: e.target.value })}
+                                className="input-field text-[12px]"
+                                placeholder="100"
+                              />
+                            </div>
+                          </div>
+                          <button
+                            className="btn-primary text-xs w-full"
+                            disabled={poolStatus === "pending" || !form.itemTypeId || !form.initialSui || !form.initialItems}
+                            onClick={() => {
+                              if (!ownerCapId) return;
+                              createPool({
+                                corridorId: corridor.id,
+                                ownerCapId,
+                                storageUnitId: depot.id,
+                                itemTypeId: Number(form.itemTypeId),
+                                feeBps: Number(form.feeBps),
+                                initialSuiAmount: Math.floor(Number(form.initialSui) * 1_000_000_000),
+                                initialItems: Number(form.initialItems),
+                              });
+                            }}
+                          >
+                            {poolStatus === "pending" ? "Creating..." : `Create Pool ${label}`}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-eve-muted">No pool configured. Owner can create one.</p>
                       )}
                     </div>
                   ))}
