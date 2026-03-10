@@ -80,3 +80,43 @@ export interface TradeRoute {
   netProfit: number;
   liquidity: number;
 }
+
+// --- DeepBook Integration Types ---
+
+export interface BalanceManagerInfo {
+  id: string;
+  corridorId: string;
+  operator: string;
+  suiBalance: number;
+  deepBalance: number;
+}
+
+export interface DeepBookOrder {
+  orderId: string;
+  poolId: string;
+  isBid: boolean;
+  price: number;
+  quantity: number;
+  filled: number;
+  status: "open" | "filled" | "cancelled";
+  createdAt: number;
+}
+
+export interface DeepBookPool {
+  id: string;
+  baseAsset: string;
+  quoteAsset: string;
+  midPrice: number;
+  baseVault: number;
+  quoteVault: number;
+  deepVault: number;
+  isWhitelisted: boolean;
+}
+
+export interface SwapQuote {
+  inputAmount: number;
+  outputAmount: number;
+  deepRequired: number;
+  priceImpact: number;
+  effectivePrice: number;
+}

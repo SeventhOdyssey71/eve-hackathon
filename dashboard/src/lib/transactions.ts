@@ -429,3 +429,353 @@ export function buildCreateTreasury({
   });
   return tx;
 }
+
+// --- DeepBook Adapter Operations ---
+
+// Move: create_balance_manager(ctx) -> BalanceManager
+export function buildCreateBalanceManager({
+  packageId,
+}: {
+  packageId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::create_balance_manager`,
+  });
+  return tx;
+}
+
+// Move: link_balance_manager(config, admin, corridor_id, balance_manager_id, operator)
+export function buildLinkBalanceManager({
+  packageId,
+  configId,
+  adminCapId,
+  corridorId,
+  balanceManagerId,
+  operator,
+}: {
+  packageId: string;
+  configId: string;
+  adminCapId: string;
+  corridorId: string;
+  balanceManagerId: string;
+  operator: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::link_balance_manager`,
+    arguments: [
+      tx.object(configId),
+      tx.object(adminCapId),
+      tx.pure.id(corridorId),
+      tx.pure.id(balanceManagerId),
+      tx.pure.address(operator),
+    ],
+  });
+  return tx;
+}
+
+// Move: deposit_sui(balance_manager, coin, ctx)
+export function buildDepositSui({
+  packageId,
+  balanceManagerId,
+  coinId,
+}: {
+  packageId: string;
+  balanceManagerId: string;
+  coinId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::deposit_sui`,
+    arguments: [tx.object(balanceManagerId), tx.object(coinId)],
+  });
+  return tx;
+}
+
+// Move: deposit_deep(balance_manager, coin, ctx)
+export function buildDepositDeep({
+  packageId,
+  balanceManagerId,
+  coinId,
+}: {
+  packageId: string;
+  balanceManagerId: string;
+  coinId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::deposit_deep`,
+    arguments: [tx.object(balanceManagerId), tx.object(coinId)],
+  });
+  return tx;
+}
+
+// Move: withdraw_sui(balance_manager, amount, ctx) -> Coin<SUI>
+export function buildWithdrawSui({
+  packageId,
+  balanceManagerId,
+  amount,
+}: {
+  packageId: string;
+  balanceManagerId: string;
+  amount: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::withdraw_sui`,
+    arguments: [tx.object(balanceManagerId), tx.pure.u64(amount)],
+  });
+  return tx;
+}
+
+// Move: withdraw_deep(balance_manager, amount, ctx) -> Coin<DEEP>
+export function buildWithdrawDeep({
+  packageId,
+  balanceManagerId,
+  amount,
+}: {
+  packageId: string;
+  balanceManagerId: string;
+  amount: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::withdraw_deep`,
+    arguments: [tx.object(balanceManagerId), tx.pure.u64(amount)],
+  });
+  return tx;
+}
+
+// Move: swap_sui_for_deep(pool, sui_in, deep_fee, min_deep_out, clock, ctx)
+export function buildSwapSuiForDeep({
+  packageId,
+  poolId,
+  suiCoinId,
+  deepFeeCoinId,
+  minDeepOut,
+}: {
+  packageId: string;
+  poolId: string;
+  suiCoinId: string;
+  deepFeeCoinId: string;
+  minDeepOut: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::swap_sui_for_deep`,
+    arguments: [
+      tx.object(poolId),
+      tx.object(suiCoinId),
+      tx.object(deepFeeCoinId),
+      tx.pure.u64(minDeepOut),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: swap_deep_for_sui(pool, deep_in, deep_fee, min_sui_out, clock, ctx)
+export function buildSwapDeepForSui({
+  packageId,
+  poolId,
+  deepCoinId,
+  deepFeeCoinId,
+  minSuiOut,
+}: {
+  packageId: string;
+  poolId: string;
+  deepCoinId: string;
+  deepFeeCoinId: string;
+  minSuiOut: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::swap_deep_for_sui`,
+    arguments: [
+      tx.object(poolId),
+      tx.object(deepCoinId),
+      tx.object(deepFeeCoinId),
+      tx.pure.u64(minSuiOut),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: place_limit_order<B,Q>(pool, bm, client_order_id, order_type, price, quantity, is_bid, expire_timestamp, clock, ctx)
+export function buildPlaceLimitOrder({
+  packageId,
+  poolId,
+  balanceManagerId,
+  baseType,
+  quoteType,
+  clientOrderId,
+  orderType,
+  price,
+  quantity,
+  isBid,
+  expireTimestamp,
+}: {
+  packageId: string;
+  poolId: string;
+  balanceManagerId: string;
+  baseType: string;
+  quoteType: string;
+  clientOrderId: number;
+  orderType: number;
+  price: number;
+  quantity: number;
+  isBid: boolean;
+  expireTimestamp: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::place_limit_order`,
+    typeArguments: [baseType, quoteType],
+    arguments: [
+      tx.object(poolId),
+      tx.object(balanceManagerId),
+      tx.pure.u64(clientOrderId),
+      tx.pure.u8(orderType),
+      tx.pure.u64(price),
+      tx.pure.u64(quantity),
+      tx.pure.bool(isBid),
+      tx.pure.u64(expireTimestamp),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: place_market_order<B,Q>(pool, bm, client_order_id, quantity, is_bid, clock, ctx)
+export function buildPlaceMarketOrder({
+  packageId,
+  poolId,
+  balanceManagerId,
+  baseType,
+  quoteType,
+  clientOrderId,
+  quantity,
+  isBid,
+}: {
+  packageId: string;
+  poolId: string;
+  balanceManagerId: string;
+  baseType: string;
+  quoteType: string;
+  clientOrderId: number;
+  quantity: number;
+  isBid: boolean;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::place_market_order`,
+    typeArguments: [baseType, quoteType],
+    arguments: [
+      tx.object(poolId),
+      tx.object(balanceManagerId),
+      tx.pure.u64(clientOrderId),
+      tx.pure.u64(quantity),
+      tx.pure.bool(isBid),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: cancel_order<B,Q>(pool, bm, order_id, clock, ctx)
+export function buildCancelOrder({
+  packageId,
+  poolId,
+  balanceManagerId,
+  baseType,
+  quoteType,
+  orderId,
+}: {
+  packageId: string;
+  poolId: string;
+  balanceManagerId: string;
+  baseType: string;
+  quoteType: string;
+  orderId: string; // u128 as string
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::cancel_order`,
+    typeArguments: [baseType, quoteType],
+    arguments: [
+      tx.object(poolId),
+      tx.object(balanceManagerId),
+      tx.pure.u128(BigInt(orderId)),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: cancel_all_orders<B,Q>(pool, bm, clock, ctx)
+export function buildCancelAllOrders({
+  packageId,
+  poolId,
+  balanceManagerId,
+  baseType,
+  quoteType,
+}: {
+  packageId: string;
+  poolId: string;
+  balanceManagerId: string;
+  baseType: string;
+  quoteType: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::cancel_all_orders`,
+    typeArguments: [baseType, quoteType],
+    arguments: [
+      tx.object(poolId),
+      tx.object(balanceManagerId),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: claim_rebates<B,Q>(pool, bm, ctx)
+export function buildClaimRebates({
+  packageId,
+  poolId,
+  balanceManagerId,
+  baseType,
+  quoteType,
+}: {
+  packageId: string;
+  poolId: string;
+  balanceManagerId: string;
+  baseType: string;
+  quoteType: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::claim_rebates`,
+    typeArguments: [baseType, quoteType],
+    arguments: [tx.object(poolId), tx.object(balanceManagerId)],
+  });
+  return tx;
+}
+
+// Move: mint_trade_cap(balance_manager, ctx) -> TradeCap
+export function buildMintTradeCap({
+  packageId,
+  balanceManagerId,
+}: {
+  packageId: string;
+  balanceManagerId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::deepbook_adapter::mint_trade_cap`,
+    arguments: [tx.object(balanceManagerId)],
+  });
+  return tx;
+}
