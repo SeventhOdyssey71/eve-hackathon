@@ -1,120 +1,102 @@
 # Frontier Exchange Network (FEN)
 
-> The interstellar economic protocol for EVE Frontier — EVE Frontier x Sui 2026 Hackathon
+> Player-owned trade corridors for EVE Frontier on Sui -- EVE Frontier x Sui 2026 Hackathon
 
 ## Overview
 
-FEN is the **economic backbone** of EVE Frontier. It transforms isolated smart assemblies into a connected trade network with automated market making, multi-hop route discovery, and on-chain operator reputation.
-
-**Operators** build profitable trade corridors. **Traders** discover optimal multi-hop routes. **The protocol** handles pricing, fees, and trust — autonomously.
+FEN turns isolated smart assemblies into a connected trade network. Operators link two gates and two depots into a **corridor**, set toll prices and exchange rates, and earn revenue from every jump and trade. Traders discover the best routes and execute trades through the dashboard.
 
 ```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│   Gate A    │◄───────►│   Gate B    │◄───────►│   Gate C    │
-│  (toll)     │  hop 1   │  (toll)     │  hop 2   │  (toll)     │
-└──────┬──────┘         └──────┬──────┘         └──────┬──────┘
-       │                       │                       │
-┌──────┴──────┐         ┌──────┴──────┐         ┌──────┴──────┐
-│  Depot A    │         │  Depot B    │         │  Depot C    │
-│  AMM Pool   │         │  AMM Pool   │         │  AMM Pool   │
-└──────┬──────┘         └──────┬──────┘         └──────┬──────┘
-       └───────┐   ┌───────────┼───────────┐   ┌──────┘
-               ▼   ▼           ▼           ▼   ▼
-          ┌──────────┐    ┌──────────┐   ┌──────────┐
-          │ Treasury │    │  Route   │   │Reputation│
-          │ (fees)   │    │  Graph   │   │ Scores   │
-          └──────────┘    └──────────┘   └──────────┘
+  Source Gate ──────── Jump Link ──────── Dest Gate
+  (toll: 0.1 SUI)                        (toll: 0.05 SUI)
+       │                                       │
+   Depot A                                 Depot B
+   (Crude → Refined                    (Refined → Crude
+    3:1, 2% fee)                        1:2, 1.5% fee)
+       │                                       │
+       └────────── Treasury (SUI) ─────────────┘
+                   (owner withdraws)
 ```
 
-### Key Innovations
+## Deployed on Sui Testnet
 
-1. **AMM Liquidity Pools** — First on-chain DEX for EVE Frontier items. Depots use constant-product pricing (`x * y = k`) for dynamic, supply-driven exchange rates. No more fixed ratios.
+| Component | ID |
+|-----------|-----|
+| Package | `0xb05f71abd959c6ffe9c5bb2a2bfb316d201f01dbca8c4508c59bb09efdc20f09` |
+| CorridorRegistry | `0xe01806aa7e0ebf3ea03140137b972b795f81059e654b53ee99c9711dc3ce1b2d` |
+| BalanceManagerRegistry | `0x27d5587b2f07301e8e1694f00f06b6e0ebcc9274a9caa45180eb93b629852920` |
 
-2. **Multi-Hop Route Graph** — Corridors form a directed graph. The protocol discovers optimal multi-hop routes across chained corridors — "Google Maps for interstellar trade."
-
-3. **Operator Reputation** — On-chain trust scores computed from uptime, volume, fee fairness, and emergency lockdowns. Traders see who to trust before committing.
-
-4. **DeepBook v3 Integration** — Native Sui CLOB integration enables multi-token toll payments, treasury revenue swaps, corridor market making with maker rebates, and on-chain price oracles.
+See [DEPLOYMENT.md](contracts/fen/DEPLOYMENT.md) for all object IDs.
 
 ## Project Structure
 
 ```
 eve-hackathon/
-├── fen/                         # Sui Move extension package (9 modules)
+├── contracts/fen/              # Sui Move extension package
 │   ├── sources/
-│   │   ├── config.move          # Shared config via dynamic fields + AdminCap
-│   │   ├── toll_gate.move       # Gate extension: SUI toll, surge pricing, emergency lock
-│   │   ├── depot.move           # SSU extension: fixed-ratio trading pairs
-│   │   ├── liquidity_pool.move  # AMM constant-product pricing engine
-│   │   ├── corridor.move        # Registry linking gates + depots into trade routes
-│   │   ├── route_graph.move     # Multi-hop route graph with adjacency lists
-│   │   ├── reputation.move      # On-chain operator reputation scores
-│   │   ├── treasury.move        # Pooled revenue collection and withdrawal
-│   │   └── deepbook_adapter.move # DeepBook v3 CLOB integration
+│   │   ├── corridor.move       # Corridor registry + lifecycle (shared objects, OwnerCap)
+│   │   ├── toll_gate.move      # Gate toll extension: SUI payments, surge pricing
+│   │   ├── depot.move          # SSU exchange extension: item-for-item trading
+│   │   ├── treasury.move       # Revenue pool with owner-gated withdrawals
+│   │   └── deepbook_adapter.move # DeepBook v3 balance manager bridge
 │   └── tests/
-│       └── fen_tests.move       # 62 tests, 100% function coverage
+│       ├── corridor_tests.move # 5 tests: register, activate, emergency, fee update
+│       └── treasury_tests.move # 3 tests: create, deposit/withdraw, overflow
 │
-├── docs/                        # PDF documentation (6 documents)
-│   ├── 01_Project_Overview_and_Architecture.pdf
-│   ├── 02_Smart_Contract_Documentation.pdf
-│   ├── 03_DeepBook_DeFi_Integration.pdf
-│   ├── 04_Testing_and_Quality_Assurance.pdf
-│   ├── 05_Dashboard_and_Frontend.pdf
-│   └── 06_Work_Log_and_Progress.pdf
-│
-├── dashboard/                   # Next.js 15 operator dashboard
+├── dashboard/                  # Next.js 15 operator dashboard
 │   └── src/
-│       ├── app/                 # Routes: /, /corridors, /trade, /operate
-│       ├── components/          # Sidebar, Header, StatsGrid, Charts
-│       ├── hooks/               # Sui transaction hooks + data fetching
-│       ├── lib/                 # PTB builders, types, mock data, config
-│       └── providers/           # Sui dApp Kit provider
+│       ├── app/                # Routes: /, /corridors, /trade, /operate
+│       ├── components/         # Sidebar, Header, StatsGrid, Charts, AssemblyPicker
+│       ├── hooks/              # On-chain data, OwnerCap discovery, assembly discovery
+│       ├── lib/                # PTB builders, types, config
+│       └── providers/          # Sui dApp Kit provider
 │
-└── scripts/                     # Setup and deployment scripts
+└── docs/                       # Documentation
 ```
 
-## Smart Contracts (Move)
+## Smart Contracts (5 Move Modules)
 
-Built as a **world-contracts extension package** using the typed witness pattern:
+Built as a **world-contracts extension package** using the typed witness pattern (`FenAuth`):
 
-| Module | Type | Description |
-|--------|------|-------------|
-| `toll_gate` | `TollAuth` on `Gate` | SUI toll payments, surge pricing (configurable multiplier), emergency lockdown |
-| `depot` | `DepotAuth` on `StorageUnit` | Fixed-ratio trading pairs with basis-point fees |
-| `liquidity_pool` | AMM Engine | Constant-product (x*y=k) pricing, slippage protection, fee collection |
-| `corridor` | Registry | On-chain corridor registry with jump/trade/revenue counters |
-| `route_graph` | Network Graph | Bidirectional adjacency lists for multi-hop route discovery |
-| `reputation` | Trust System | Composite scoring from uptime, volume, fees, and lockdown history |
-| `treasury` | Revenue Pool | Pooled fee collection, recipient-only withdrawal |
-| `config` | Config Layer | Shared `FenConfig` with dynamic field rules per gate/depot/pool |
-| `deepbook_adapter` | DeFi Bridge | DeepBook v3 CLOB: swaps, orders, price oracle, balance management |
+| Module | What It Does |
+|--------|-------------|
+| `corridor` | Shared corridor registry with `Table<ID, CorridorInfo>`. Each corridor links 2 gates + 2 depots. Mints `CorridorOwnerCap` on registration. Tracks jump/trade/revenue counters. |
+| `toll_gate` | Extends `world::gate` with SUI toll collection. Per-gate `TollConfig` stored as dynamic field on Corridor. Surge pricing with configurable multiplier. Issues `JumpPermit` via `FenAuth` witness after payment. |
+| `depot` | Extends `world::storage_unit` with item-for-item exchange. Per-depot `DepotConfig` stored as dynamic field. Configurable input/output types, exchange ratio, and basis-point fee. |
+| `treasury` | Shared SUI `Balance` pool linked to a corridor. Owner-gated partial and full withdrawals. |
+| `deepbook_adapter` | Links DeepBook v3 balance managers to corridors. Event-based order tracking. |
 
-Events emitted for indexer: `TollPaidEvent`, `DepotTradeEvent`, `SwapEvent`, `CorridorCreatedEvent`, `ReputationUpdatedEvent`, `EdgeAddedEvent`, `TreasuryDepositEvent`, `ManagerLinkedEvent`, etc.
+### Key Events
+
+`CorridorCreatedEvent`, `CorridorStatusChangedEvent`, `TollPaidEvent`, `TollConfigUpdatedEvent`, `SurgeActivatedEvent`, `SurgeDeactivatedEvent`, `TradeExecutedEvent`, `DepotConfigUpdatedEvent`, `DepotActivatedEvent`, `DepotDeactivatedEvent`, `ManagerLinkedEvent`, `OrderPlacedEvent`
 
 ### Build & Test
 
 ```bash
-# Clone reference contracts
-./scripts/setup.sh
-
-# Build
-cd fen && sui move build
-
-# Run tests (62 tests, all passing)
-sui move test
+cd contracts/fen
+sui move build
+sui move test    # 8 tests, all passing
 ```
 
 ## Dashboard
 
-Next.js 15 + React 19 + Tailwind CSS + `@mysten/dapp-kit`
+Next.js 15 + React 19 + Tailwind CSS + `@mysten/dapp-kit` + `@mysten/sui` v2
 
 | Route | Description |
 |-------|-------------|
-| `/` | Dashboard home: stats grid, 24h volume chart, recent activity |
-| `/corridors` | Browse corridors: routes, depot pairs, revenue, status |
-| `/corridors/[id]` | Corridor detail: gate-depot visualization, activity timeline |
-| `/trade` | Trade route discovery: sortable by profit/liquidity, dynamic calculator |
-| `/operate` | Operator panel: toll/depot config, surge pricing, emergency controls, registration |
+| `/` | Stats grid, volume chart, recent activity, top corridors |
+| `/corridors` | Browse all corridors with status, revenue, jump/trade counts |
+| `/corridors/[id]` | Gate-depot visualization, toll/surge display, activity timeline |
+| `/trade` | Trade route discovery with sortable table and cost calculator |
+| `/operate` | Operator panel: register corridors, configure tolls/depots, emergency controls |
+
+### Key Features
+
+- **OwnerCap discovery** -- auto-detects `CorridorOwnerCap` objects from connected wallet
+- **Assembly auto-discovery** -- finds owned Gates and Storage Units for the registration form
+- **Dynamic field reading** -- displays real TollConfig and DepotConfig from on-chain dynamic fields
+- **Ownership-aware UI** -- disables controls for corridors you don't own
+- **Event-based corridor discovery** -- uses `CorridorCreatedEvent` + `multiGetObjects` since registry uses `Table`
 
 ### Run
 
@@ -124,53 +106,67 @@ pnpm install
 pnpm dev
 ```
 
-The dashboard runs in **mock mode** by default (env vars default to `0x0`). Set these in `.env.local` after deploying contracts:
-
+Environment variables (defaults point to deployed testnet package):
 ```
-NEXT_PUBLIC_FEN_PACKAGE_ID=0x...
-NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0x...
-NEXT_PUBLIC_FEN_CONFIG_ID=0x...
+NEXT_PUBLIC_SUI_NETWORK=testnet
+NEXT_PUBLIC_FEN_PACKAGE_ID=0xb05f71abd959c6ffe9c5bb2a2bfb316d201f01dbca8c4508c59bb09efdc20f09
+NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0xe01806aa7e0ebf3ea03140137b972b795f81059e654b53ee99c9711dc3ce1b2d
 ```
 
 ## How It Works
 
 ### For Operators
-1. Deploy and link two gates (via world-contracts)
+1. Deploy and link two gates in EVE Frontier (via world-contracts)
 2. Deploy two SSUs at each gate endpoint
-3. Register a corridor: `corridor::register_corridor`
-4. Configure tolls: `toll_gate::set_toll_config` (per-gate pricing)
-5. Choose pricing mode:
-   - **Fixed ratio**: `depot::set_depot_config` (simple X:Y ratios)
-   - **AMM pool**: `liquidity_pool::initialize_pool` (dynamic x*y=k pricing)
-6. Stock depots with tradeable items
-7. Reputation builds automatically from transaction history
-8. Collect revenue: `treasury::withdraw_all`
+3. Connect wallet on the dashboard, go to Operate > Create New
+4. Select your gates and depots (auto-discovered from wallet)
+5. Register the corridor (mints a CorridorOwnerCap to your wallet)
+6. Configure tolls per gate: `toll_gate::set_toll_config`
+7. Configure depots (exchange ratio, item types, fee): `depot::set_depot_config`
+8. Activate depots and the corridor
+9. Revenue flows to your fee recipient address
+10. Withdraw anytime: `treasury::withdraw_all`
 
 ### For Traders
-1. Discover routes via dashboard (cheapest multi-hop paths, best AMM rates)
-2. Check operator reputation scores
-3. Pay toll at source gate: `toll_gate::pay_toll_and_jump`
-4. Receive `JumpPermit` and jump through linked gates
-5. Trade items at depots: `depot::execute_trade` or swap via AMM pool
-6. Chain multiple corridors for multi-hop journeys
+1. Browse routes on the Trade page (sorted by rate, toll cost)
+2. Use the calculator to estimate output for a given input quantity
+3. Pay toll at source gate: `toll_gate::pay_toll_and_jump` (sends SUI, issues JumpPermit)
+4. Trade at depot: `depot::execute_trade` (deposit input item, receive output item)
 
-### AMM Pricing Example
+## Architecture
+
+### Extension Pattern
+
+FEN uses the typed-witness pattern from world-contracts:
+
+```move
+// FenAuth witness authorizes gate jumps and SSU deposits/withdrawals
+public struct FenAuth has drop {}
+
+// Only FEN logic can issue jump permits for FEN-authorized gates
+gate::issue_jump_permit<FenAuth>(source, dest, character, FenAuth {}, expiry, ctx);
+
+// Only FEN logic can move items in FEN-authorized storage units
+storage_unit::deposit_item<FenAuth>(su, character, item, FenAuth {}, ctx);
+```
+
+### Dynamic Field Config
+
+Toll and depot configs are stored as dynamic fields on Corridor objects:
 
 ```
-Pool: 10,000 Crude Fuel (X) ↔ 5,000 Refined Fuel (Y)
-k = 10,000 × 5,000 = 50,000,000
-
-Trader swaps 1,000 Crude Fuel:
-  → output = (1,000 × 5,000) / (10,000 + 1,000) = 454 Refined Fuel
-  → Price impact: got 0.454/unit instead of 0.5/unit (9.1% slippage)
-
-After trade: 11,000 Crude Fuel ↔ 4,546 Refined Fuel
-  → New price shifted: 0.413 Refined per Crude (incentivizes reverse trade)
+Corridor (shared object)
+  ├── TollConfigKey { gate_id: source } => TollConfig { toll_amount, surge_active, surge_numerator }
+  ├── TollConfigKey { gate_id: dest }   => TollConfig { ... }
+  ├── DepotConfigKey { su_id: depot_a } => DepotConfig { ratio_in, ratio_out, fee_bps, is_active, ... }
+  └── DepotConfigKey { su_id: depot_b } => DepotConfig { ... }
 ```
+
+This allows the corridor owner to update configs without redeploying, and any reader can query them via `getDynamicFieldObject`.
 
 ## Tech Stack
 
-- **Smart Contracts**: Sui Move (edition 2024), extends `evefrontier/world-contracts` + DeepBook v3
+- **Smart Contracts**: Sui Move (edition 2024), extends `evefrontier/world-contracts`
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Wallet**: `@mysten/dapp-kit` + `@mysten/sui` v2
 - **Charts**: Recharts
@@ -178,25 +174,20 @@ After trade: 11,000 Crude Fuel ↔ 4,546 Refined Fuel
 
 ## Hackathon Context
 
-**EVE Frontier x Sui 2026** — "A Toolkit for Civilization"
+**EVE Frontier x Sui 2026** -- "A Toolkit for Civilization"
 
-FEN is the **civilization infrastructure layer** — the economic backbone that other mods build on top of. It directly addresses:
+FEN is trade infrastructure that other mods build on top of. It directly addresses:
 
-- [world-contracts#44](https://github.com/evefrontier/world-contracts/issues/44) — Extension-managed inventory (FEN depots manage SSU inventory autonomously via typed witness pattern)
-- [world-contracts#45](https://github.com/evefrontier/world-contracts/issues/45) — Deposit receipts for trustless trading (FEN treasury + deposit events)
-- Deploy script improvements for [PR #125](https://github.com/evefrontier/world-contracts/pull/125) — Multi-package deployment, better error handling
+- [world-contracts#44](https://github.com/evefrontier/world-contracts/issues/44) -- Extension-managed inventory (FEN depots manage SSU inventory via typed witness)
+- [world-contracts#45](https://github.com/evefrontier/world-contracts/issues/45) -- Deposit receipts for trustless trading (FEN treasury + events)
 
-### What Makes FEN Different
-
-| Feature | Before FEN | With FEN |
-|---------|-----------|----------|
-| Item pricing | Manual, off-chain negotiation | Automated AMM (x*y=k) |
-| Route discovery | Trial and error | On-chain graph pathfinding |
-| Operator trust | Reputation unknown | Composite on-chain scores |
-| Multi-hop trade | Manual gate-by-gate | Chained corridors with route optimization |
-| Gate economics | Free jumps only | Dynamic tolls with surge pricing |
-| Revenue management | None | Pooled treasury with auditable withdrawal |
-| DeFi integration | None | DeepBook v3 CLOB: swaps, orders, price oracle |
+| Before FEN | With FEN |
+|-----------|----------|
+| Manual off-chain item negotiation | On-chain depot exchange with configured ratios |
+| Free jumps only | Dynamic tolls with surge pricing |
+| No revenue model for gate operators | Toll + trade fee revenue with treasury |
+| No visibility into exchange rates | Dashboard shows all rates, tolls, and fees |
+| Raw Sui object IDs to interact | Assembly auto-discovery from wallet |
 
 ## License
 

@@ -2,35 +2,62 @@
 
 import { useState } from "react";
 import { useTradeRoutes, useCorridors } from "@/hooks/use-corridors";
-import { formatNumber } from "@/lib/utils";
-import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft } from "lucide-react";
+import { formatNumber, formatSui, formatPercent } from "@/lib/utils";
+import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft, Zap, Info } from "lucide-react";
 import Link from "next/link";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 
 export default function TradePage() {
-  const [sortBy, setSortBy] = useState<"profit" | "liquidity">("profit");
+  const [sortBy, setSortBy] = useState<"rate" | "toll" | "fee">("rate");
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [quantity, setQuantity] = useState(100);
   const { routes } = useTradeRoutes();
   const { corridors } = useCorridors();
   const account = useCurrentAccount();
 
-  const sorted = [...routes].sort((a, b) =>
-    sortBy === "profit" ? b.netProfit - a.netProfit : b.liquidity - a.liquidity
-  );
+  const sorted = [...routes].sort((a, b) => {
+    switch (sortBy) {
+      case "rate": return a.effectiveRate - b.effectiveRate; // lower ratio = better
+      case "toll": return a.tollCost - b.tollCost;
+      case "fee": return a.effectiveRate - b.effectiveRate;
+      default: return 0;
+    }
+  });
 
   const activeRoute = routes[selectedRoute] || routes[0];
-  const estimatedReturn = activeRoute
-    ? ((quantity / activeRoute.effectiveRate) * activeRoute.netProfit) / 100
-    : 0;
+
+  // Calculate real estimated output based on depot ratio and fee
+  const calcOutput = (route: typeof activeRoute, qty: number) => {
+    if (!route || route.effectiveRate === 0) return { output: 0, fee: 0, tollSui: 0 };
+    const rawOutput = Math.floor(qty / route.effectiveRate);
+    // fee is already embedded in effectiveRate for fixed-ratio depots
+    // tollCost is in SUI
+    return {
+      output: rawOutput,
+      fee: 0,
+      tollSui: route.tollCost,
+    };
+  };
+
+  const estimate = activeRoute ? calcOutput(activeRoute, quantity) : { output: 0, fee: 0, tollSui: 0 };
+
+  // Count active vs total corridors for the header stat
+  const activeCorrCount = corridors.filter((c) => c.status === "active").length;
 
   return (
     <div className="space-y-8 max-w-[1400px]">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Trade Routes</h1>
-        <p className="text-sm text-eve-text-dim mt-1">
-          Find the most profitable corridors to trade through
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Trade Routes</h1>
+          <p className="text-sm text-eve-text-dim mt-1">
+            Find the best corridors to trade through
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-sm text-eve-text-dim">
+            {routes.length} route{routes.length !== 1 ? "s" : ""} across {activeCorrCount} active corridor{activeCorrCount !== 1 ? "s" : ""}
+          </div>
+        </div>
       </div>
 
       {routes.length === 0 ? (
@@ -40,9 +67,17 @@ export default function TradePage() {
           </div>
           <h3 className="text-lg font-semibold text-eve-text mb-1">No trade routes available</h3>
           <p className="text-sm text-eve-text-dim max-w-sm mb-6">
-            Trade routes will appear here when active corridors with configured depots are registered on-chain.
+            Trade routes appear when active corridors have configured and activated depots.
+            {corridors.length > 0 && corridors.every((c) => c.status !== "active") && (
+              <span className="block mt-2 text-eve-yellow">
+                {corridors.length} corridor{corridors.length !== 1 ? "s" : ""} found but none are active yet.
+              </span>
+            )}
           </p>
-          <Link href="/corridors" className="btn-primary">View Corridors</Link>
+          <div className="flex gap-3">
+            <Link href="/corridors" className="btn-secondary">View Corridors</Link>
+            <Link href="/operate" className="btn-primary">Create Corridor</Link>
+          </div>
         </div>
       ) : (
         <>
@@ -50,26 +85,23 @@ export default function TradePage() {
           <div className="flex items-center gap-3">
             <Filter className="w-4 h-4 text-eve-muted" />
             <span className="text-xs text-eve-text-dim font-medium">Sort by:</span>
-            <button
-              onClick={() => setSortBy("profit")}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                sortBy === "profit"
-                  ? "bg-eve-orange/10 text-eve-orange"
-                  : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
-              }`}
-            >
-              <TrendingUp className="w-3 h-3 inline mr-1" /> Profit
-            </button>
-            <button
-              onClick={() => setSortBy("liquidity")}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                sortBy === "liquidity"
-                  ? "bg-eve-orange/10 text-eve-orange"
-                  : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
-              }`}
-            >
-              <Droplets className="w-3 h-3 inline mr-1" /> Liquidity
-            </button>
+            {([
+              { key: "rate", label: "Best Rate", icon: TrendingUp },
+              { key: "toll", label: "Lowest Toll", icon: Zap },
+              { key: "fee", label: "Lowest Fee", icon: Droplets },
+            ] as const).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setSortBy(key)}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  sortBy === key
+                    ? "bg-eve-orange/10 text-eve-orange"
+                    : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
+                }`}
+              >
+                <Icon className="w-3 h-3 inline mr-1" /> {label}
+              </button>
+            ))}
           </div>
 
           {/* Trade routes table */}
@@ -79,9 +111,8 @@ export default function TradePage() {
                 <tr className="border-b border-eve-border text-xs text-eve-text-faint uppercase tracking-wider">
                   <th className="text-left py-3 px-5 font-medium">Route</th>
                   <th className="text-left py-3 px-4 font-medium">Trade Pair</th>
-                  <th className="text-right py-3 px-4 font-medium">Rate</th>
-                  <th className="text-right py-3 px-4 font-medium">Toll</th>
-                  <th className="text-right py-3 px-4 font-medium">Net Profit</th>
+                  <th className="text-right py-3 px-4 font-medium">Exchange Rate</th>
+                  <th className="text-right py-3 px-4 font-medium">Toll Cost</th>
                   <th className="text-right py-3 px-4 font-medium">Liquidity</th>
                   <th className="text-right py-3 px-5 font-medium"></th>
                 </tr>
@@ -90,7 +121,10 @@ export default function TradePage() {
                 {sorted.map((route, i) => (
                   <tr
                     key={`${route.corridorId}-${route.from}-${i}`}
-                    className="border-b border-eve-border/40 hover:bg-eve-elevated/40 transition-colors"
+                    className={`border-b border-eve-border/40 hover:bg-eve-elevated/40 transition-colors cursor-pointer ${
+                      routes.indexOf(route) === selectedRoute ? "bg-eve-orange/5" : ""
+                    }`}
+                    onClick={() => setSelectedRoute(routes.indexOf(route))}
                   >
                     <td className="py-3.5 px-5">
                       <div className="font-medium text-eve-text">{route.corridorName}</div>
@@ -98,27 +132,35 @@ export default function TradePage() {
                         {route.from} <ArrowRight className="w-3 h-3 text-eve-orange" /> {route.to}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-eve-text-dim">
-                      {route.inputItem} → {route.outputItem}
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-eve-text font-medium">
-                      {route.effectiveRate}:1
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-eve-text-dim">
-                      {route.tollCost} SUI
+                    <td className="py-3.5 px-4">
+                      <span className="text-eve-text">{route.inputItem}</span>
+                      <span className="text-eve-muted mx-1.5">→</span>
+                      <span className="text-eve-text">{route.outputItem}</span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <span className={`font-medium ${route.netProfit > 0 ? "text-eve-green" : route.netProfit < 0 ? "text-eve-red" : "text-eve-text-dim"}`}>
-                        {route.netProfit > 0 ? "+" : ""}{route.netProfit.toFixed(1)} SUI
+                      <span className="text-eve-orange font-semibold">
+                        {route.effectiveRate.toFixed(2)}:1
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right text-eve-text-dim">
-                      {formatNumber(route.liquidity)} units
+                      {route.tollCost > 0 ? (
+                        <span>{route.tollCost.toFixed(4)} SUI</span>
+                      ) : (
+                        <span className="text-eve-green">Free</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-eve-text-dim">
+                      {route.liquidity > 0 ? (
+                        `${formatNumber(route.liquidity)} units`
+                      ) : (
+                        <span className="text-eve-muted">--</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-5 text-right">
                       <Link
                         href={`/corridors/${route.corridorId}`}
                         className="text-xs text-eve-orange font-medium hover:text-eve-orange-light transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         Details →
                       </Link>
@@ -131,50 +173,116 @@ export default function TradePage() {
 
           {/* Trade calculator */}
           <div className="card p-6">
-            <h3 className="section-title mb-5">Trade Calculator</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 items-end">
-              <div>
-                <label className="label">Route</label>
-                <select
-                  className="input-field text-[13px]"
-                  value={selectedRoute}
-                  onChange={(e) => setSelectedRoute(Number(e.target.value))}
-                >
-                  {routes.map((r, i) => (
-                    <option key={`${r.corridorId}-${r.from}-${i}`} value={i}>
-                      {r.corridorName}: {r.inputItem} → {r.outputItem}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Quantity</label>
-                <input
-                  type="number"
-                  placeholder="100"
-                  className="input-field text-[13px]"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(0, Number(e.target.value)))}
-                />
-              </div>
-              <div>
-                <label className="label">Estimated Return</label>
-                <div className="card-elevated px-4 py-2.5 text-[13px]">
-                  <span className={`font-semibold ${estimatedReturn >= 0 ? "text-eve-green" : "text-eve-red"}`}>
-                    {estimatedReturn >= 0 ? "+" : ""}{estimatedReturn.toFixed(2)} SUI
-                  </span>
-                  <span className="text-eve-muted ml-2 text-xs">(after toll + fees)</span>
-                </div>
-              </div>
-              <div>
-                <button
-                  className="btn-primary w-full"
-                  disabled={!account}
-                >
-                  {account ? "Execute Trade" : "Connect Wallet"}
-                </button>
-              </div>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="section-title">Trade Calculator</h3>
+              {activeRoute && (
+                <span className="text-xs text-eve-text-dim">
+                  {activeRoute.corridorName}: {activeRoute.inputItem} → {activeRoute.outputItem}
+                </span>
+              )}
             </div>
+
+            {activeRoute ? (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div>
+                    <label className="label">Route</label>
+                    <select
+                      className="input-field text-[13px]"
+                      value={selectedRoute}
+                      onChange={(e) => setSelectedRoute(Number(e.target.value))}
+                    >
+                      {routes.map((r, i) => (
+                        <option key={`${r.corridorId}-${r.from}-${i}`} value={i}>
+                          {r.corridorName}: {r.inputItem} → {r.outputItem}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Input Quantity ({activeRoute.inputItem})</label>
+                    <input
+                      type="number"
+                      placeholder="100"
+                      className="input-field text-[13px]"
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(0, Number(e.target.value)))}
+                      min={1}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">You Receive ({activeRoute.outputItem})</label>
+                    <div className="card-elevated px-4 py-2.5 text-[13px]">
+                      <span className="font-semibold text-eve-orange text-lg">
+                        {estimate.output}
+                      </span>
+                      <span className="text-eve-muted ml-2 text-xs">units</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cost breakdown */}
+                <div className="bg-eve-bg rounded-xl p-4">
+                  <div className="text-xs font-semibold text-eve-text-dim mb-3 flex items-center gap-1.5">
+                    <Info className="w-3 h-3" /> Cost Breakdown
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <div className="text-eve-muted">Exchange Rate</div>
+                      <div className="text-eve-text font-medium mt-0.5">
+                        {activeRoute.effectiveRate.toFixed(2)} : 1
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-eve-muted">Gate Toll</div>
+                      <div className="text-eve-text font-medium mt-0.5">
+                        {activeRoute.tollCost > 0 ? `${activeRoute.tollCost.toFixed(4)} SUI` : "Free"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-eve-muted">Input</div>
+                      <div className="text-eve-text font-medium mt-0.5">
+                        {quantity} {activeRoute.inputItem}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-eve-muted">Output</div>
+                      <div className="text-eve-orange font-semibold mt-0.5">
+                        {estimate.output} {activeRoute.outputItem}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    className="btn-primary flex-1"
+                    disabled={!account || quantity <= 0}
+                  >
+                    {!account
+                      ? "Connect Wallet to Trade"
+                      : quantity <= 0
+                        ? "Enter Quantity"
+                        : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
+                  </button>
+                  <Link
+                    href={`/corridors/${activeRoute.corridorId}`}
+                    className="btn-secondary"
+                  >
+                    View Corridor
+                  </Link>
+                </div>
+
+                {account && (
+                  <p className="text-[10px] text-eve-muted text-center">
+                    This will submit a transaction to pay the toll and execute the trade in a single PTB.
+                    You need SUI for the toll and the input items in your inventory.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-eve-muted text-center py-4">Select a route above to calculate trade costs</p>
+            )}
           </div>
         </>
       )}
