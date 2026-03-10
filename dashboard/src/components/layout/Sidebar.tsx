@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Route, Settings, ArrowRightLeft, Zap } from "lucide-react";
+import { LayoutDashboard, Route, Settings, ArrowRightLeft, Zap, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/corridors", label: "Corridors", icon: Route },
   { href: "/trade", label: "Trade", icon: ArrowRightLeft },
+  { href: "/swap", label: "AMM Swap", icon: Repeat },
   { href: "/operate", label: "Operate", icon: Settings },
 ];
 

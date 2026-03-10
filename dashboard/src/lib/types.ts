@@ -81,6 +81,21 @@ export interface TradeRoute {
   liquidity: number;
 }
 
+// --- AMM Liquidity Pool Types ---
+
+export interface PoolConfig {
+  storageUnitId: string;
+  itemTypeId: number;
+  reserveSui: number;
+  reserveItems: number;
+  feeBps: number;
+  isActive: boolean;
+  totalSwaps: number;
+  totalSuiVolume: number;
+  totalItemVolume: number;
+  totalFeesCollected: number;
+}
+
 // --- DeepBook Integration Types ---
 
 export interface BalanceManagerInfo {

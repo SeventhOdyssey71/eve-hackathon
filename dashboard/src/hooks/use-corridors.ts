@@ -3,7 +3,7 @@
 import { useSuiClientQuery, useSuiClient } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
 import { useState, useEffect, useMemo } from "react";
-import type { Corridor, DashboardStats, ActivityEvent, TradeRoute } from "@/lib/types";
+import type { Corridor, DashboardStats, ActivityEvent, TradeRoute, PoolConfig } from "@/lib/types";
 
 const STATUS_MAP: Record<number, Corridor["status"]> = {
   0: "inactive",
@@ -324,6 +324,99 @@ async function fetchDepotConfig(
   return null;
 }
 
+interface PoolConfigFields {
+  item_type_id: string | number;
+  reserve_sui: unknown; // Balance<SUI> object
+  reserve_items: string | number;
+  fee_bps: string | number;
+  is_active: boolean;
+  total_swaps: string | number;
+  total_sui_volume: string | number;
+  total_item_volume: string | number;
+  total_fees_collected: string | number;
+}
+
+async function fetchPoolConfig(
+  client: ReturnType<typeof useSuiClient>,
+  packageId: string,
+  corridorId: string,
+  storageUnitId: string,
+): Promise<PoolConfig | null> {
+  try {
+    const result = await client.getDynamicFieldObject({
+      parentId: corridorId,
+      name: {
+        type: `${packageId}::liquidity_pool::PoolConfigKey`,
+        value: { storage_unit_id: storageUnitId },
+      },
+    });
+    if (result.data?.content && "fields" in result.data.content) {
+      const outer = result.data.content.fields as Record<string, unknown>;
+      const value = (outer.value ?? outer) as Record<string, unknown>;
+      // reserve_sui is a Balance<SUI> — stored as { value: string }
+      let reserveSui = 0;
+      if (value.reserve_sui && typeof value.reserve_sui === "object") {
+        reserveSui = Number((value.reserve_sui as Record<string, unknown>).value || 0);
+      } else {
+        reserveSui = Number(value.reserve_sui || 0);
+      }
+      return {
+        storageUnitId,
+        itemTypeId: Number(value.item_type_id),
+        reserveSui,
+        reserveItems: Number(value.reserve_items),
+        feeBps: Number(value.fee_bps),
+        isActive: Boolean(value.is_active),
+        totalSwaps: Number(value.total_swaps),
+        totalSuiVolume: Number(value.total_sui_volume),
+        totalItemVolume: Number(value.total_item_volume),
+        totalFeesCollected: Number(value.total_fees_collected),
+      };
+    }
+  } catch {
+    // Pool not configured for this storage unit
+  }
+  return null;
+}
+
+export function usePoolConfigs(corridorId: string, depotAId: string, depotBId: string): {
+  poolA: PoolConfig | null;
+  poolB: PoolConfig | null;
+  isLoading: boolean;
+} {
+  const packageId = useNetworkVariable("fenPackageId");
+  const client = useSuiClient();
+  const [poolA, setPoolA] = useState<PoolConfig | null>(null);
+  const [poolB, setPoolB] = useState<PoolConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!corridorId || packageId === "0x0") {
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function load() {
+      const [a, b] = await Promise.all([
+        depotAId ? fetchPoolConfig(client, packageId, corridorId, depotAId) : null,
+        depotBId ? fetchPoolConfig(client, packageId, corridorId, depotBId) : null,
+      ]);
+      if (!cancelled) {
+        setPoolA(a);
+        setPoolB(b);
+        setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [corridorId, depotAId, depotBId, client, packageId]);
+
+  return { poolA, poolB, isLoading };
+}
+
 export function useCorridor(id: string): {
   corridor: Corridor | null;
   isLoading: boolean;
@@ -471,11 +564,22 @@ export function useActivity(corridorId?: string): {
     { enabled: isConfigured }
   );
 
+  const { data: poolData } = useSuiClientQuery(
+    "queryEvents",
+    {
+      query: { MoveModule: { package: packageId, module: "liquidity_pool" } },
+      limit: 20,
+      order: "descending" as const,
+    },
+    { enabled: isConfigured }
+  );
+
   const events: ActivityEvent[] = [];
   const allEvents = [
     ...(data?.data || []),
     ...(tollData?.data || []),
     ...(depotData?.data || []),
+    ...(poolData?.data || []),
   ].sort((a, b) => Number(b.timestampMs || 0) - Number(a.timestampMs || 0));
 
   for (const event of allEvents.slice(0, 20)) {
@@ -520,6 +624,16 @@ function formatEventDescription(eventName: string, parsed: Record<string, unknow
       return "Depot activated";
     case "DepotDeactivatedEvent":
       return "Depot deactivated";
+    case "PoolCreatedEvent":
+      return "AMM pool created";
+    case "PoolActivatedEvent":
+      return "AMM pool activated";
+    case "PoolDeactivatedEvent":
+      return "AMM pool deactivated";
+    case "SwapEvent":
+      return `AMM swap: ${Number(parsed.direction) === 0 ? "bought items" : "sold items"}`;
+    case "LiquidityChangedEvent":
+      return `Liquidity ${parsed.is_add ? "added" : "removed"}`;
     default:
       return eventName.replace(/Event$/, "").replace(/([A-Z])/g, " $1").trim();
   }
@@ -530,6 +644,7 @@ function inferEventType(eventType: string): ActivityEvent["type"] {
   if (eventType.includes("Trade")) return "trade";
   if (eventType.includes("TollConfig") || eventType.includes("Surge")) return "toll_config";
   if (eventType.includes("DepotConfig") || eventType.includes("DepotActivated") || eventType.includes("DepotDeactivated")) return "depot_config";
+  if (eventType.includes("SwapEvent") || eventType.includes("Pool") || eventType.includes("LiquidityChanged")) return "trade";
   if (eventType.includes("Emergency") || eventType.includes("StatusChanged")) return "emergency";
   if (eventType.includes("CorridorCreated")) return "corridor_created";
   return "jump";

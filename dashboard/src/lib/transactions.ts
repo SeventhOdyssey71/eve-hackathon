@@ -458,6 +458,217 @@ export function buildDeposit({
   return tx;
 }
 
+// --- AMM Liquidity Pool Operations ---
+// Move: fen::liquidity_pool::create_pool(corridor, owner_cap, storage_unit_id, item_type_id, fee_bps, initial_sui, initial_items)
+
+export function buildCreatePool({
+  packageId,
+  corridorId,
+  ownerCapId,
+  storageUnitId,
+  itemTypeId,
+  feeBps,
+  initialSuiAmount,
+  initialItems,
+}: {
+  packageId: string;
+  corridorId: string;
+  ownerCapId: string;
+  storageUnitId: string;
+  itemTypeId: number;
+  feeBps: number;
+  initialSuiAmount: number;
+  initialItems: number;
+}) {
+  const tx = new Transaction();
+  const [suiCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(initialSuiAmount)]);
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::create_pool`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.id(storageUnitId),
+      tx.pure.u64(itemTypeId),
+      tx.pure.u64(feeBps),
+      suiCoin,
+      tx.pure.u64(initialItems),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::liquidity_pool::activate_pool(corridor, owner_cap, storage_unit_id)
+export function buildActivatePool({
+  packageId,
+  corridorId,
+  ownerCapId,
+  storageUnitId,
+}: {
+  packageId: string;
+  corridorId: string;
+  ownerCapId: string;
+  storageUnitId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::activate_pool`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.id(storageUnitId),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::liquidity_pool::deactivate_pool(corridor, owner_cap, storage_unit_id)
+export function buildDeactivatePool({
+  packageId,
+  corridorId,
+  ownerCapId,
+  storageUnitId,
+}: {
+  packageId: string;
+  corridorId: string;
+  ownerCapId: string;
+  storageUnitId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::deactivate_pool`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.id(storageUnitId),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::liquidity_pool::add_liquidity(corridor, owner_cap, storage_unit_id, sui, additional_items)
+export function buildAddLiquidity({
+  packageId,
+  corridorId,
+  ownerCapId,
+  storageUnitId,
+  suiAmount,
+  additionalItems,
+}: {
+  packageId: string;
+  corridorId: string;
+  ownerCapId: string;
+  storageUnitId: string;
+  suiAmount: number;
+  additionalItems: number;
+}) {
+  const tx = new Transaction();
+  const [suiCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(suiAmount)]);
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::add_liquidity`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.id(storageUnitId),
+      suiCoin,
+      tx.pure.u64(additionalItems),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::liquidity_pool::remove_liquidity(corridor, owner_cap, storage_unit_id, sui_amount, items_to_remove, ctx)
+export function buildRemoveLiquidity({
+  packageId,
+  corridorId,
+  ownerCapId,
+  storageUnitId,
+  suiAmount,
+  itemsToRemove,
+}: {
+  packageId: string;
+  corridorId: string;
+  ownerCapId: string;
+  storageUnitId: string;
+  suiAmount: number;
+  itemsToRemove: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::remove_liquidity`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.id(storageUnitId),
+      tx.pure.u64(suiAmount),
+      tx.pure.u64(itemsToRemove),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::liquidity_pool::sell_items(corridor, storage_unit, character, input_item, min_sui_out, clock, ctx)
+export function buildSellItems({
+  packageId,
+  corridorId,
+  storageUnitId,
+  characterId,
+  inputItemId,
+  minSuiOut,
+}: {
+  packageId: string;
+  corridorId: string;
+  storageUnitId: string;
+  characterId: string;
+  inputItemId: string;
+  minSuiOut: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::sell_items`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(storageUnitId),
+      tx.object(characterId),
+      tx.object(inputItemId),
+      tx.pure.u64(minSuiOut),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::liquidity_pool::buy_items(corridor, storage_unit, character, payment, min_items_out, clock, ctx)
+export function buildBuyItems({
+  packageId,
+  corridorId,
+  storageUnitId,
+  characterId,
+  suiAmount,
+  minItemsOut,
+}: {
+  packageId: string;
+  corridorId: string;
+  storageUnitId: string;
+  characterId: string;
+  suiAmount: number;
+  minItemsOut: number;
+}) {
+  const tx = new Transaction();
+  const [suiCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(suiAmount)]);
+  tx.moveCall({
+    target: `${packageId}::liquidity_pool::buy_items`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(storageUnitId),
+      tx.object(characterId),
+      suiCoin,
+      tx.pure.u64(minItemsOut),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
 // --- DeepBook Adapter Operations ---
 
 // Move: fen::deepbook_adapter::link_balance_manager(registry, owner_cap, corridor_id, balance_manager_id, operator, ctx)
