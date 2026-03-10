@@ -42,6 +42,8 @@ eve-hackathon/
 │   │   └── deepbook_adapter.move # DeepBook v3 balance manager bridge
 │   └── tests/
 │       ├── corridor_tests.move       # 5 tests: register, activate, emergency, fee update
+│       ├── toll_gate_tests.move      # 15 tests: config, surge pricing, effective toll math
+│       ├── depot_tests.move          # 19 tests: config, activation, ratios, fees, status
 │       ├── treasury_tests.move       # 3 tests: create, deposit/withdraw, overflow
 │       └── liquidity_pool_tests.move # 36 tests: AMM math, pool lifecycle, swaps, liquidity
 │
@@ -78,7 +80,7 @@ Built as a **world-contracts extension package** using the typed witness pattern
 ```bash
 cd contracts/fen
 sui move build
-sui move test    # 44 tests, all passing
+sui move test    # 78 tests, all passing
 ```
 
 ## Dashboard
