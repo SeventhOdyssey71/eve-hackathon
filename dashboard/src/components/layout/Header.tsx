@@ -16,14 +16,15 @@ export function Header() {
           type="text"
           placeholder="Search corridors, gates, addresses..."
           className="input-field pl-10 py-1.5 text-sm"
+          aria-label="Search corridors, gates, and addresses"
         />
       </div>
 
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <button className="relative p-2 text-eve-text-dim hover:text-eve-text transition-colors">
+        <button className="relative p-2 text-eve-text-dim hover:text-eve-text transition-colors" aria-label="Notifications">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-eve-orange rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-eve-orange rounded-full" aria-hidden="true" />
         </button>
 
         {/* Wallet Status Indicator */}

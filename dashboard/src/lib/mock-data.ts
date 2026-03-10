@@ -171,9 +171,15 @@ export const MOCK_TRADE_ROUTES: TradeRoute[] = [
   { corridorId: "0xc002", corridorName: "Darkrift Passage", from: "Shadowmere-9", to: "Darkrift-3", inputItem: "Nano Paste", outputItem: "Technocore", effectiveRate: 2.0, tollCost: 1.5, netProfit: 5.7, liquidity: 180 },
 ];
 
+// Seeded pseudo-random for stable chart data across renders
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
 export const MOCK_CHART_DATA = Array.from({ length: 24 }, (_, i) => ({
   hour: `${String(i).padStart(2, "0")}:00`,
-  jumps: Math.floor(Math.random() * 20 + 5),
-  trades: Math.floor(Math.random() * 15 + 3),
-  revenue: Math.floor(Math.random() * 500_000_000 + 100_000_000),
+  jumps: Math.floor(seededRandom(i * 13 + 7) * 20 + 5),
+  trades: Math.floor(seededRandom(i * 17 + 3) * 15 + 3),
+  revenue: Math.floor(seededRandom(i * 23 + 11) * 500_000_000 + 100_000_000),
 }));

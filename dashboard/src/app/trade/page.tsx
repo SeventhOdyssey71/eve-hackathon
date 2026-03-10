@@ -9,6 +9,8 @@ import { useCurrentAccount } from "@mysten/dapp-kit";
 
 export default function TradePage() {
   const [sortBy, setSortBy] = useState<"profit" | "liquidity">("profit");
+  const [selectedRoute, setSelectedRoute] = useState(0);
+  const [quantity, setQuantity] = useState(100);
   const { routes } = useTradeRoutes();
   const { corridors } = useCorridors();
   const account = useCurrentAccount();
@@ -18,6 +20,12 @@ export default function TradePage() {
   );
 
   const activeCorridors = corridors.filter((c) => c.status === "active");
+
+  // Calculate estimated return based on selected route and quantity
+  const activeRoute = routes[selectedRoute] || routes[0];
+  const estimatedReturn = activeRoute
+    ? ((quantity / activeRoute.effectiveRate) * activeRoute.netProfit) / 100
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -91,7 +99,7 @@ export default function TradePage() {
                 </td>
                 <td className="p-4 text-right">
                   <span className={route.netProfit > 0 ? "text-eve-green" : "text-eve-red"}>
-                    +{route.netProfit.toFixed(1)} SUI
+                    {route.netProfit > 0 ? "+" : ""}{route.netProfit.toFixed(1)} SUI
                   </span>
                 </td>
                 <td className="p-4 text-right text-eve-text-dim">
@@ -117,22 +125,34 @@ export default function TradePage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div>
             <label className="label">Route</label>
-            <select className="input-field text-sm">
-              {activeCorridors.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}: {c.sourceGate.solarSystem} → {c.destGate.solarSystem}
+            <select
+              className="input-field text-sm"
+              value={selectedRoute}
+              onChange={(e) => setSelectedRoute(Number(e.target.value))}
+            >
+              {routes.map((r, i) => (
+                <option key={`${r.corridorId}-${r.from}-${i}`} value={i}>
+                  {r.corridorName}: {r.inputItem} → {r.outputItem}
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label className="label">Quantity</label>
-            <input type="number" placeholder="100" className="input-field text-sm" defaultValue={100} />
+            <input
+              type="number"
+              placeholder="100"
+              className="input-field text-sm"
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(0, Number(e.target.value)))}
+            />
           </div>
           <div>
             <label className="label">Estimated Return</label>
             <div className="card-elevated p-2.5 text-sm">
-              <span className="text-eve-green font-bold">+8.5 SUI</span>
+              <span className={`font-bold ${estimatedReturn >= 0 ? "text-eve-green" : "text-eve-red"}`}>
+                {estimatedReturn >= 0 ? "+" : ""}{estimatedReturn.toFixed(2)} SUI
+              </span>
               <span className="text-eve-text-dim ml-2">(after toll + fees)</span>
             </div>
           </div>
