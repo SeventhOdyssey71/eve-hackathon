@@ -1,0 +1,49 @@
+# =============================================
+# Reference repos (cloned separately, not tracked)
+# =============================================
+world-contracts/
+eve-explorer/
+builder-documentation/
+
+# =============================================
+# Legacy EVM repos (not used for this hackathon)
+# =============================================
+builder-examples/
+civ-toolkit/
+world-chain-contracts/
+
+# =============================================
+# OS / Editor
+# =============================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# =============================================
+# Sui Move build artifacts
+# =============================================
+build/
+.move/
+
+# =============================================
+# Node / TypeScript
+# =============================================
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+
+# =============================================
+# Misc
+# =============================================
+*.log
+.turso/
+local.db
+local.db-*

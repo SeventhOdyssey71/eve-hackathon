@@ -1,0 +1,10 @@
+[package]
+name = "fen"
+edition = "2024"
+authors = ["Frontier Exchange Network"]
+
+[dependencies]
+World = { local = "../world-contracts/contracts/world" }
+
+[addresses]
+fen = "0x0"
