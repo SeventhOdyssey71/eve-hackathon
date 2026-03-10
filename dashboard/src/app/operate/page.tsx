@@ -22,6 +22,7 @@ import {
   Zap, ChevronRight, Droplets,
 } from "lucide-react";
 import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useToast } from "@/components/ui/Toast";
 
 function TxStatusBadge({ status, error }: { status: string; error: string | null }) {
   if (status === "idle") return null;
@@ -73,13 +74,72 @@ export default function OperatePage() {
   const totalRevenue = corridor ? corridor.totalTollRevenue + corridor.totalTradeRevenue : 0;
 
   // Transaction hooks
-  const { registerCorridor, status: regStatus, error: regError } = useRegisterCorridor();
-  const { setTollConfig, status: tollStatus, error: tollError } = useSetTollConfig();
-  const { emergencyLock, emergencyUnlock, status: emStatus, error: emError } = useEmergencyControl();
-  const { activateCorridor, deactivateCorridor, status: csStatus, error: csError } = useCorridorStatus();
-  const { withdrawAll, status: wdStatus, error: wdError } = useWithdrawRevenue();
-  const { setDepotConfig, activateDepot, deactivateDepot: deactivateDepotFn, status: depotStatus, error: depotError } = useDepotConfig();
-  const { createPool, activatePool, deactivatePool, addLiquidity, removeLiquidity, status: poolStatus, error: poolError } = usePoolManagement();
+  const { registerCorridor, status: regStatus, error: regError, digest: regDigest } = useRegisterCorridor();
+  const { setTollConfig, status: tollStatus, error: tollError, digest: tollDigest } = useSetTollConfig();
+  const { emergencyLock, emergencyUnlock, status: emStatus, error: emError, digest: emDigest } = useEmergencyControl();
+  const { activateCorridor, deactivateCorridor, status: csStatus, error: csError, digest: csDigest } = useCorridorStatus();
+  const { withdrawAll, status: wdStatus, error: wdError, digest: wdDigest } = useWithdrawRevenue();
+  const { setDepotConfig, activateDepot, deactivateDepot: deactivateDepotFn, status: depotStatus, error: depotError, digest: depotDigest } = useDepotConfig();
+  const { createPool, activatePool, deactivatePool, addLiquidity, removeLiquidity, status: poolStatus, error: poolError, digest: poolDigest } = usePoolManagement();
+
+  // Toast notifications
+  const { txSuccess, txError } = useToast();
+
+  useEffect(() => {
+    if (regStatus === "success" && regDigest) {
+      txSuccess("Corridor registered", regDigest);
+    } else if (regStatus === "error" && regError) {
+      txError("Registration failed", regError);
+    }
+  }, [regStatus]);
+
+  useEffect(() => {
+    if (tollStatus === "success" && tollDigest) {
+      txSuccess("Toll config updated", tollDigest);
+    } else if (tollStatus === "error" && tollError) {
+      txError("Toll config failed", tollError);
+    }
+  }, [tollStatus]);
+
+  useEffect(() => {
+    if (emStatus === "success" && emDigest) {
+      txSuccess("Emergency control executed", emDigest);
+    } else if (emStatus === "error" && emError) {
+      txError("Emergency control failed", emError);
+    }
+  }, [emStatus]);
+
+  useEffect(() => {
+    if (csStatus === "success" && csDigest) {
+      txSuccess("Corridor status updated", csDigest);
+    } else if (csStatus === "error" && csError) {
+      txError("Corridor status update failed", csError);
+    }
+  }, [csStatus]);
+
+  useEffect(() => {
+    if (wdStatus === "success" && wdDigest) {
+      txSuccess("Revenue withdrawn", wdDigest);
+    } else if (wdStatus === "error" && wdError) {
+      txError("Withdrawal failed", wdError);
+    }
+  }, [wdStatus]);
+
+  useEffect(() => {
+    if (depotStatus === "success" && depotDigest) {
+      txSuccess("Depot config updated", depotDigest);
+    } else if (depotStatus === "error" && depotError) {
+      txError("Depot config failed", depotError);
+    }
+  }, [depotStatus]);
+
+  useEffect(() => {
+    if (poolStatus === "success" && poolDigest) {
+      txSuccess("Pool operation completed", poolDigest);
+    } else if (poolStatus === "error" && poolError) {
+      txError("Pool operation failed", poolError);
+    }
+  }, [poolStatus]);
 
   // Pool config from on-chain
   const { poolA, poolB, isLoading: poolsLoading } = usePoolConfigs(
