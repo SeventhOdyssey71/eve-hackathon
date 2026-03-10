@@ -220,3 +220,10 @@ public fun total_trades(corridor: &Corridor): u64 { corridor.total_trades }
 public fun total_toll_revenue(corridor: &Corridor): u64 { corridor.total_toll_revenue }
 public fun total_trade_revenue(corridor: &Corridor): u64 { corridor.total_trade_revenue }
 public fun total_corridors(registry: &CorridorRegistry): u64 { registry.total_corridors }
+
+// === Test Functions ===
+
+#[test_only]
+public fun init_for_testing(ctx: &mut TxContext) {
+    init(ctx);
+}

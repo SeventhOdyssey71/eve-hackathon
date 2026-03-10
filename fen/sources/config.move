@@ -91,6 +91,13 @@ public fun set_rule<K: copy + drop + store, V: store + drop>(
     }
 }
 
+// === Test Functions ===
+
+#[test_only]
+public fun init_for_testing(ctx: &mut TxContext) {
+    init(ctx);
+}
+
 /// Remove a rule and return the value.
 public fun remove_rule<K: copy + drop + store, V: store>(
     config: &mut FenConfig,
