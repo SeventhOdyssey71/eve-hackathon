@@ -34,11 +34,13 @@ FEN is the **economic backbone** of EVE Frontier. It transforms isolated smart a
 
 3. **Operator Reputation** — On-chain trust scores computed from uptime, volume, fee fairness, and emergency lockdowns. Traders see who to trust before committing.
 
+4. **DeepBook v3 Integration** — Native Sui CLOB integration enables multi-token toll payments, treasury revenue swaps, corridor market making with maker rebates, and on-chain price oracles.
+
 ## Project Structure
 
 ```
 eve-hackathon/
-├── fen/                         # Sui Move extension package (8 modules)
+├── fen/                         # Sui Move extension package (9 modules)
 │   ├── sources/
 │   │   ├── config.move          # Shared config via dynamic fields + AdminCap
 │   │   ├── toll_gate.move       # Gate extension: SUI toll, surge pricing, emergency lock
@@ -47,9 +49,18 @@ eve-hackathon/
 │   │   ├── corridor.move        # Registry linking gates + depots into trade routes
 │   │   ├── route_graph.move     # Multi-hop route graph with adjacency lists
 │   │   ├── reputation.move      # On-chain operator reputation scores
-│   │   └── treasury.move        # Pooled revenue collection and withdrawal
+│   │   ├── treasury.move        # Pooled revenue collection and withdrawal
+│   │   └── deepbook_adapter.move # DeepBook v3 CLOB integration
 │   └── tests/
-│       └── fen_tests.move       # 56 tests, 100% function coverage
+│       └── fen_tests.move       # 62 tests, 100% function coverage
+│
+├── docs/                        # PDF documentation (6 documents)
+│   ├── 01_Project_Overview_and_Architecture.pdf
+│   ├── 02_Smart_Contract_Documentation.pdf
+│   ├── 03_DeepBook_DeFi_Integration.pdf
+│   ├── 04_Testing_and_Quality_Assurance.pdf
+│   ├── 05_Dashboard_and_Frontend.pdf
+│   └── 06_Work_Log_and_Progress.pdf
 │
 ├── dashboard/                   # Next.js 15 operator dashboard
 │   └── src/
@@ -76,8 +87,9 @@ Built as a **world-contracts extension package** using the typed witness pattern
 | `reputation` | Trust System | Composite scoring from uptime, volume, fees, and lockdown history |
 | `treasury` | Revenue Pool | Pooled fee collection, recipient-only withdrawal |
 | `config` | Config Layer | Shared `FenConfig` with dynamic field rules per gate/depot/pool |
+| `deepbook_adapter` | DeFi Bridge | DeepBook v3 CLOB: swaps, orders, price oracle, balance management |
 
-Events emitted for indexer: `TollPaidEvent`, `DepotTradeEvent`, `SwapEvent`, `CorridorCreatedEvent`, `ReputationUpdatedEvent`, `EdgeAddedEvent`, `TreasuryDepositEvent`, etc.
+Events emitted for indexer: `TollPaidEvent`, `DepotTradeEvent`, `SwapEvent`, `CorridorCreatedEvent`, `ReputationUpdatedEvent`, `EdgeAddedEvent`, `TreasuryDepositEvent`, `ManagerLinkedEvent`, etc.
 
 ### Build & Test
 
@@ -88,7 +100,7 @@ Events emitted for indexer: `TollPaidEvent`, `DepotTradeEvent`, `SwapEvent`, `Co
 # Build
 cd fen && sui move build
 
-# Run tests (56 tests, all passing)
+# Run tests (62 tests, all passing)
 sui move test
 ```
 
@@ -158,7 +170,7 @@ After trade: 11,000 Crude Fuel ↔ 4,546 Refined Fuel
 
 ## Tech Stack
 
-- **Smart Contracts**: Sui Move (edition 2024), extends `evefrontier/world-contracts`
+- **Smart Contracts**: Sui Move (edition 2024), extends `evefrontier/world-contracts` + DeepBook v3
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
 - **Wallet**: `@mysten/dapp-kit` + `@mysten/sui` v2
 - **Charts**: Recharts
@@ -184,6 +196,7 @@ FEN is the **civilization infrastructure layer** — the economic backbone that 
 | Multi-hop trade | Manual gate-by-gate | Chained corridors with route optimization |
 | Gate economics | Free jumps only | Dynamic tolls with surge pricing |
 | Revenue management | None | Pooled treasury with auditable withdrawal |
+| DeFi integration | None | DeepBook v3 CLOB: swaps, orders, price oracle |
 
 ## License
 
