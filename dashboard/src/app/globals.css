@@ -4,40 +4,76 @@
 
 @layer base {
   body {
-    @apply bg-eve-bg text-eve-text font-mono antialiased;
+    @apply bg-eve-bg text-eve-text antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  * {
+    @apply border-eve-border;
   }
 
   ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-eve-bg;
+    @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-eve-border rounded-full;
+    @apply bg-eve-border/60 rounded-full hover:bg-eve-muted/40;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-eve-surface border border-eve-border rounded-lg;
+    @apply bg-eve-surface border border-eve-border rounded-xl;
   }
   .card-elevated {
-    @apply bg-eve-elevated border border-eve-border rounded-lg;
+    @apply bg-eve-elevated border border-eve-border rounded-xl;
   }
   .btn-primary {
-    @apply px-4 py-2 bg-eve-orange hover:bg-eve-orange-light text-white rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2.5 bg-eve-orange hover:bg-eve-orange-light text-white rounded-lg font-medium text-sm transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98];
   }
   .btn-secondary {
-    @apply px-4 py-2 bg-eve-elevated hover:bg-eve-border text-eve-text rounded font-medium transition-colors border border-eve-border;
+    @apply px-4 py-2.5 bg-eve-elevated hover:bg-eve-border text-eve-text rounded-lg font-medium text-sm transition-all duration-150 border border-eve-border active:scale-[0.98];
   }
   .btn-danger {
-    @apply px-4 py-2 bg-eve-red/20 hover:bg-eve-red/30 text-eve-red rounded font-medium transition-colors border border-eve-red/30;
+    @apply px-4 py-2.5 bg-eve-red/10 hover:bg-eve-red/20 text-eve-red rounded-lg font-medium text-sm transition-all duration-150 border border-eve-red/20 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply px-3 py-2 text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated rounded-lg text-sm transition-colors;
   }
   .input-field {
-    @apply w-full bg-eve-bg border border-eve-border rounded px-3 py-2 text-eve-text placeholder-eve-muted focus:outline-none focus:border-eve-orange focus:ring-1 focus:ring-eve-orange;
+    @apply w-full bg-eve-bg border border-eve-border rounded-lg px-3.5 py-2.5 text-sm text-eve-text placeholder-eve-muted/60 focus:outline-none focus:border-eve-orange/60 focus:ring-2 focus:ring-eve-orange/20 transition-all;
   }
   .label {
-    @apply block text-xs text-eve-text-dim uppercase tracking-wider mb-1;
+    @apply block text-xs font-medium text-eve-text-dim mb-1.5;
+  }
+  .section-title {
+    @apply text-[13px] font-semibold text-eve-text-dim uppercase tracking-wide;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border;
+  }
+  .badge-active {
+    @apply bg-eve-green/10 text-eve-green border-eve-green/20;
+  }
+  .badge-inactive {
+    @apply bg-eve-muted/10 text-eve-muted border-eve-muted/20;
+  }
+  .badge-emergency {
+    @apply bg-eve-red/10 text-eve-red border-eve-red/20;
+  }
+  .badge-surge {
+    @apply bg-eve-yellow/10 text-eve-yellow border-eve-yellow/20;
+  }
+  .stat-value {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+  .stat-label {
+    @apply text-xs font-medium text-eve-text-dim;
+  }
+  .stat-sub {
+    @apply text-xs text-eve-muted mt-0.5;
   }
 }

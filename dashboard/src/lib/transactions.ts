@@ -4,12 +4,12 @@ import { Transaction } from "@mysten/sui/transactions";
  * PTB builders for all FEN on-chain operations.
  * Each function returns a Transaction ready for signing.
  *
- * Arguments match the Move function signatures exactly.
- * Admin operations require the AdminCap object ID.
+ * These match the published fen::corridor, fen::toll_gate, fen::depot,
+ * fen::treasury, and fen::deepbook_adapter Move modules exactly.
  */
 
 // --- Corridor Registration ---
-// Move: register_corridor(registry, source_gate_id, dest_gate_id, depot_a_id, depot_b_id, fee_recipient, name, clock, ctx)
+// Move: fen::corridor::register_corridor(registry, source_gate_id, dest_gate_id, depot_a_id, depot_b_id, fee_recipient, name, clock, ctx)
 
 export function buildRegisterCorridor({
   packageId,
@@ -48,99 +48,106 @@ export function buildRegisterCorridor({
   return tx;
 }
 
-// Move: activate_corridor(corridor, ctx)
+// Move: fen::corridor::activate_corridor(corridor, owner_cap, ctx)
 export function buildActivateCorridor({
   packageId,
   corridorId,
+  ownerCapId,
 }: {
   packageId: string;
   corridorId: string;
+  ownerCapId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::corridor::activate_corridor`,
-    arguments: [tx.object(corridorId)],
+    arguments: [tx.object(corridorId), tx.object(ownerCapId)],
   });
   return tx;
 }
 
-// Move: deactivate_corridor(corridor, ctx)
+// Move: fen::corridor::deactivate_corridor(corridor, owner_cap, ctx)
 export function buildDeactivateCorridor({
   packageId,
   corridorId,
+  ownerCapId,
 }: {
   packageId: string;
   corridorId: string;
+  ownerCapId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::corridor::deactivate_corridor`,
-    arguments: [tx.object(corridorId)],
+    arguments: [tx.object(corridorId), tx.object(ownerCapId)],
   });
   return tx;
 }
 
-// Move: update_fee_recipient(corridor, new_recipient, ctx)
+// Move: fen::corridor::update_fee_recipient(corridor, owner_cap, new_recipient)
 export function buildUpdateFeeRecipient({
   packageId,
   corridorId,
+  ownerCapId,
   newRecipient,
 }: {
   packageId: string;
   corridorId: string;
+  ownerCapId: string;
   newRecipient: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::corridor::update_fee_recipient`,
-    arguments: [tx.object(corridorId), tx.pure.address(newRecipient)],
-  });
-  return tx;
-}
-
-// --- Toll Gate Operations ---
-// Move: set_toll_config(config, admin, gate_id, toll_amount, fee_recipient)
-
-export function buildSetTollConfig({
-  packageId,
-  configId,
-  adminCapId,
-  gateId,
-  tollAmount,
-  feeRecipient,
-}: {
-  packageId: string;
-  configId: string;
-  adminCapId: string;
-  gateId: string;
-  tollAmount: number;
-  feeRecipient: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::toll_gate::set_toll_config`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
-      tx.pure.id(gateId),
-      tx.pure.u64(tollAmount),
-      tx.pure.address(feeRecipient),
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.address(newRecipient),
     ],
   });
   return tx;
 }
 
-// Move: pay_toll_and_jump(config, source_gate, destination_gate, character, payment, clock, ctx)
+// --- Toll Gate Operations ---
+// Move: fen::toll_gate::set_toll_config(corridor, owner_cap, gate_id, toll_amount)
+
+export function buildSetTollConfig({
+  packageId,
+  corridorId,
+  ownerCapId,
+  gateId,
+  tollAmount,
+}: {
+  packageId: string;
+  corridorId: string;
+  ownerCapId: string;
+  gateId: string;
+  tollAmount: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::toll_gate::set_toll_config`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.id(gateId),
+      tx.pure.u64(tollAmount),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::toll_gate::pay_toll_and_jump(corridor, source_gate, dest_gate, character, payment, clock, ctx)
 export function buildPayTollAndJump({
   packageId,
-  configId,
+  corridorId,
   sourceGateId,
   destGateId,
   characterId,
   paymentCoinId,
 }: {
   packageId: string;
-  configId: string;
+  corridorId: string;
   sourceGateId: string;
   destGateId: string;
   characterId: string;
@@ -150,7 +157,7 @@ export function buildPayTollAndJump({
   tx.moveCall({
     target: `${packageId}::toll_gate::pay_toll_and_jump`,
     arguments: [
-      tx.object(configId),
+      tx.object(corridorId),
       tx.object(sourceGateId),
       tx.object(destGateId),
       tx.object(characterId),
@@ -161,17 +168,17 @@ export function buildPayTollAndJump({
   return tx;
 }
 
-// Move: activate_surge(config, admin, gate_id, surge_numerator)
+// Move: fen::toll_gate::activate_surge(corridor, owner_cap, gate_id, surge_numerator)
 export function buildActivateSurge({
   packageId,
-  configId,
-  adminCapId,
+  corridorId,
+  ownerCapId,
   gateId,
   surgeNumerator,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
+  corridorId: string;
+  ownerCapId: string;
   gateId: string;
   surgeNumerator: number;
 }) {
@@ -179,8 +186,8 @@ export function buildActivateSurge({
   tx.moveCall({
     target: `${packageId}::toll_gate::activate_surge`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
+      tx.object(corridorId),
+      tx.object(ownerCapId),
       tx.pure.id(gateId),
       tx.pure.u64(surgeNumerator),
     ],
@@ -188,85 +195,73 @@ export function buildActivateSurge({
   return tx;
 }
 
-// Move: deactivate_surge(config, admin, gate_id)
+// Move: fen::toll_gate::deactivate_surge(corridor, owner_cap, gate_id)
 export function buildDeactivateSurge({
   packageId,
-  configId,
-  adminCapId,
+  corridorId,
+  ownerCapId,
   gateId,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
+  corridorId: string;
+  ownerCapId: string;
   gateId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::toll_gate::deactivate_surge`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
+      tx.object(corridorId),
+      tx.object(ownerCapId),
       tx.pure.id(gateId),
     ],
   });
   return tx;
 }
 
-// Move: emergency_lock(config, admin, gate_id)
+// Move: fen::corridor::emergency_lock(corridor, owner_cap, ctx)
 export function buildEmergencyLock({
   packageId,
-  configId,
-  adminCapId,
-  gateId,
+  corridorId,
+  ownerCapId,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
-  gateId: string;
+  corridorId: string;
+  ownerCapId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${packageId}::toll_gate::emergency_lock`,
-    arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
-      tx.pure.id(gateId),
-    ],
+    target: `${packageId}::corridor::emergency_lock`,
+    arguments: [tx.object(corridorId), tx.object(ownerCapId)],
   });
   return tx;
 }
 
-// Move: emergency_unlock(config, admin, gate_id)
+// Move: fen::corridor::emergency_unlock(corridor, owner_cap, ctx)
 export function buildEmergencyUnlock({
   packageId,
-  configId,
-  adminCapId,
-  gateId,
+  corridorId,
+  ownerCapId,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
-  gateId: string;
+  corridorId: string;
+  ownerCapId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${packageId}::toll_gate::emergency_unlock`,
-    arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
-      tx.pure.id(gateId),
-    ],
+    target: `${packageId}::corridor::emergency_unlock`,
+    arguments: [tx.object(corridorId), tx.object(ownerCapId)],
   });
   return tx;
 }
 
 // --- Depot Operations ---
-// Move: set_depot_config(config, admin, storage_unit_id, input_type_id, output_type_id, ratio_in, ratio_out, fee_bps)
+// Move: fen::depot::set_depot_config(corridor, owner_cap, storage_unit_id, input_type_id, output_type_id, ratio_in, ratio_out, fee_bps)
 
 export function buildSetDepotConfig({
   packageId,
-  configId,
-  adminCapId,
+  corridorId,
+  ownerCapId,
   storageUnitId,
   inputTypeId,
   outputTypeId,
@@ -275,8 +270,8 @@ export function buildSetDepotConfig({
   feeBps,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
+  corridorId: string;
+  ownerCapId: string;
   storageUnitId: string;
   inputTypeId: number;
   outputTypeId: number;
@@ -288,8 +283,8 @@ export function buildSetDepotConfig({
   tx.moveCall({
     target: `${packageId}::depot::set_depot_config`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
+      tx.object(corridorId),
+      tx.object(ownerCapId),
       tx.pure.id(storageUnitId),
       tx.pure.u64(inputTypeId),
       tx.pure.u64(outputTypeId),
@@ -301,16 +296,16 @@ export function buildSetDepotConfig({
   return tx;
 }
 
-// Move: execute_trade(config, storage_unit, character, input_item, ctx)
+// Move: fen::depot::execute_trade(corridor, storage_unit, character, input_item, clock, ctx)
 export function buildExecuteTrade({
   packageId,
-  configId,
+  corridorId,
   storageUnitId,
   characterId,
   inputItemId,
 }: {
   packageId: string;
-  configId: string;
+  corridorId: string;
   storageUnitId: string;
   characterId: string;
   inputItemId: string;
@@ -319,57 +314,58 @@ export function buildExecuteTrade({
   tx.moveCall({
     target: `${packageId}::depot::execute_trade`,
     arguments: [
-      tx.object(configId),
+      tx.object(corridorId),
       tx.object(storageUnitId),
       tx.object(characterId),
       tx.object(inputItemId),
+      tx.object("0x6"), // Clock
     ],
   });
   return tx;
 }
 
-// Move: activate_depot(config, admin, storage_unit_id)
+// Move: fen::depot::activate_depot(corridor, owner_cap, storage_unit_id)
 export function buildActivateDepot({
   packageId,
-  configId,
-  adminCapId,
+  corridorId,
+  ownerCapId,
   storageUnitId,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
+  corridorId: string;
+  ownerCapId: string;
   storageUnitId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::depot::activate_depot`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
+      tx.object(corridorId),
+      tx.object(ownerCapId),
       tx.pure.id(storageUnitId),
     ],
   });
   return tx;
 }
 
-// Move: deactivate_depot(config, admin, storage_unit_id)
+// Move: fen::depot::deactivate_depot(corridor, owner_cap, storage_unit_id)
 export function buildDeactivateDepot({
   packageId,
-  configId,
-  adminCapId,
+  corridorId,
+  ownerCapId,
   storageUnitId,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
+  corridorId: string;
+  ownerCapId: string;
   storageUnitId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::depot::deactivate_depot`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
+      tx.object(corridorId),
+      tx.object(ownerCapId),
       tx.pure.id(storageUnitId),
     ],
   });
@@ -377,86 +373,105 @@ export function buildDeactivateDepot({
 }
 
 // --- Treasury Operations ---
-// Move: withdraw(treasury, amount, ctx)
+// Move: fen::treasury::create_treasury(corridor_id, owner_cap, fee_recipient, ctx)
 
-export function buildWithdraw({
-  packageId,
-  treasuryId,
-  amount,
-}: {
-  packageId: string;
-  treasuryId: string;
-  amount: number;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::treasury::withdraw`,
-    arguments: [tx.object(treasuryId), tx.pure.u64(amount)],
-  });
-  return tx;
-}
-
-// Move: withdraw_all(treasury, ctx)
-export function buildWithdrawAll({
-  packageId,
-  treasuryId,
-}: {
-  packageId: string;
-  treasuryId: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::treasury::withdraw_all`,
-    arguments: [tx.object(treasuryId)],
-  });
-  return tx;
-}
-
-// Move: create_treasury(corridor_id, fee_recipient, ctx)
 export function buildCreateTreasury({
   packageId,
   corridorId,
+  ownerCapId,
   feeRecipient,
 }: {
   packageId: string;
   corridorId: string;
+  ownerCapId: string;
   feeRecipient: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
     target: `${packageId}::treasury::create_treasury`,
-    arguments: [tx.pure.id(corridorId), tx.pure.address(feeRecipient)],
+    arguments: [
+      tx.pure.id(corridorId),
+      tx.object(ownerCapId),
+      tx.pure.address(feeRecipient),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::treasury::withdraw(treasury, owner_cap, amount, ctx)
+export function buildWithdraw({
+  packageId,
+  treasuryId,
+  ownerCapId,
+  amount,
+}: {
+  packageId: string;
+  treasuryId: string;
+  ownerCapId: string;
+  amount: number;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::treasury::withdraw`,
+    arguments: [
+      tx.object(treasuryId),
+      tx.object(ownerCapId),
+      tx.pure.u64(amount),
+    ],
+  });
+  return tx;
+}
+
+// Move: fen::treasury::withdraw_all(treasury, owner_cap, ctx)
+export function buildWithdrawAll({
+  packageId,
+  treasuryId,
+  ownerCapId,
+}: {
+  packageId: string;
+  treasuryId: string;
+  ownerCapId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::treasury::withdraw_all`,
+    arguments: [tx.object(treasuryId), tx.object(ownerCapId)],
+  });
+  return tx;
+}
+
+// Move: fen::treasury::deposit(treasury, coin)
+export function buildDeposit({
+  packageId,
+  treasuryId,
+  coinId,
+}: {
+  packageId: string;
+  treasuryId: string;
+  coinId: string;
+}) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::treasury::deposit`,
+    arguments: [tx.object(treasuryId), tx.object(coinId)],
   });
   return tx;
 }
 
 // --- DeepBook Adapter Operations ---
 
-// Move: create_balance_manager(ctx) -> BalanceManager
-export function buildCreateBalanceManager({
-  packageId,
-}: {
-  packageId: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::create_balance_manager`,
-  });
-  return tx;
-}
-
-// Move: link_balance_manager(config, admin, corridor_id, balance_manager_id, operator)
+// Move: fen::deepbook_adapter::link_balance_manager(registry, owner_cap, corridor_id, balance_manager_id, operator, ctx)
 export function buildLinkBalanceManager({
   packageId,
-  configId,
-  adminCapId,
+  registryId,
+  ownerCapId,
   corridorId,
   balanceManagerId,
   operator,
 }: {
   packageId: string;
-  configId: string;
-  adminCapId: string;
+  registryId: string;
+  ownerCapId: string;
   corridorId: string;
   balanceManagerId: string;
   operator: string;
@@ -465,8 +480,8 @@ export function buildLinkBalanceManager({
   tx.moveCall({
     target: `${packageId}::deepbook_adapter::link_balance_manager`,
     arguments: [
-      tx.object(configId),
-      tx.object(adminCapId),
+      tx.object(registryId),
+      tx.object(ownerCapId),
       tx.pure.id(corridorId),
       tx.pure.id(balanceManagerId),
       tx.pure.address(operator),
@@ -475,307 +490,65 @@ export function buildLinkBalanceManager({
   return tx;
 }
 
-// Move: deposit_sui(balance_manager, coin, ctx)
-export function buildDepositSui({
+// Move: fen::deepbook_adapter::unlink_balance_manager(registry, owner_cap, corridor_id)
+export function buildUnlinkBalanceManager({
   packageId,
-  balanceManagerId,
-  coinId,
+  registryId,
+  ownerCapId,
+  corridorId,
 }: {
   packageId: string;
-  balanceManagerId: string;
-  coinId: string;
+  registryId: string;
+  ownerCapId: string;
+  corridorId: string;
 }) {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${packageId}::deepbook_adapter::deposit_sui`,
-    arguments: [tx.object(balanceManagerId), tx.object(coinId)],
-  });
-  return tx;
-}
-
-// Move: deposit_deep(balance_manager, coin, ctx)
-export function buildDepositDeep({
-  packageId,
-  balanceManagerId,
-  coinId,
-}: {
-  packageId: string;
-  balanceManagerId: string;
-  coinId: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::deposit_deep`,
-    arguments: [tx.object(balanceManagerId), tx.object(coinId)],
-  });
-  return tx;
-}
-
-// Move: withdraw_sui(balance_manager, amount, ctx) -> Coin<SUI>
-export function buildWithdrawSui({
-  packageId,
-  balanceManagerId,
-  amount,
-}: {
-  packageId: string;
-  balanceManagerId: string;
-  amount: number;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::withdraw_sui`,
-    arguments: [tx.object(balanceManagerId), tx.pure.u64(amount)],
-  });
-  return tx;
-}
-
-// Move: withdraw_deep(balance_manager, amount, ctx) -> Coin<DEEP>
-export function buildWithdrawDeep({
-  packageId,
-  balanceManagerId,
-  amount,
-}: {
-  packageId: string;
-  balanceManagerId: string;
-  amount: number;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::withdraw_deep`,
-    arguments: [tx.object(balanceManagerId), tx.pure.u64(amount)],
-  });
-  return tx;
-}
-
-// Move: swap_sui_for_deep(pool, sui_in, deep_fee, min_deep_out, clock, ctx)
-export function buildSwapSuiForDeep({
-  packageId,
-  poolId,
-  suiCoinId,
-  deepFeeCoinId,
-  minDeepOut,
-}: {
-  packageId: string;
-  poolId: string;
-  suiCoinId: string;
-  deepFeeCoinId: string;
-  minDeepOut: number;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::swap_sui_for_deep`,
+    target: `${packageId}::deepbook_adapter::unlink_balance_manager`,
     arguments: [
-      tx.object(poolId),
-      tx.object(suiCoinId),
-      tx.object(deepFeeCoinId),
-      tx.pure.u64(minDeepOut),
-      tx.object("0x6"), // Clock
+      tx.object(registryId),
+      tx.object(ownerCapId),
+      tx.pure.id(corridorId),
     ],
   });
   return tx;
 }
 
-// Move: swap_deep_for_sui(pool, deep_in, deep_fee, min_sui_out, clock, ctx)
-export function buildSwapDeepForSui({
+// Move: fen::deepbook_adapter::record_order_placed(registry, owner_cap, corridor_id, pool_id, is_bid, price, quantity, client_order_id)
+export function buildRecordOrderPlaced({
   packageId,
+  registryId,
+  ownerCapId,
+  corridorId,
   poolId,
-  deepCoinId,
-  deepFeeCoinId,
-  minSuiOut,
-}: {
-  packageId: string;
-  poolId: string;
-  deepCoinId: string;
-  deepFeeCoinId: string;
-  minSuiOut: number;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::swap_deep_for_sui`,
-    arguments: [
-      tx.object(poolId),
-      tx.object(deepCoinId),
-      tx.object(deepFeeCoinId),
-      tx.pure.u64(minSuiOut),
-      tx.object("0x6"), // Clock
-    ],
-  });
-  return tx;
-}
-
-// Move: place_limit_order<B,Q>(pool, bm, client_order_id, order_type, price, quantity, is_bid, expire_timestamp, clock, ctx)
-export function buildPlaceLimitOrder({
-  packageId,
-  poolId,
-  balanceManagerId,
-  baseType,
-  quoteType,
-  clientOrderId,
-  orderType,
+  isBid,
   price,
   quantity,
-  isBid,
-  expireTimestamp,
+  clientOrderId,
 }: {
   packageId: string;
+  registryId: string;
+  ownerCapId: string;
+  corridorId: string;
   poolId: string;
-  balanceManagerId: string;
-  baseType: string;
-  quoteType: string;
-  clientOrderId: number;
-  orderType: number;
+  isBid: boolean;
   price: number;
   quantity: number;
-  isBid: boolean;
-  expireTimestamp: number;
+  clientOrderId: number;
 }) {
   const tx = new Transaction();
   tx.moveCall({
-    target: `${packageId}::deepbook_adapter::place_limit_order`,
-    typeArguments: [baseType, quoteType],
+    target: `${packageId}::deepbook_adapter::record_order_placed`,
     arguments: [
-      tx.object(poolId),
-      tx.object(balanceManagerId),
-      tx.pure.u64(clientOrderId),
-      tx.pure.u8(orderType),
+      tx.object(registryId),
+      tx.object(ownerCapId),
+      tx.pure.id(corridorId),
+      tx.pure.id(poolId),
+      tx.pure.bool(isBid),
       tx.pure.u64(price),
       tx.pure.u64(quantity),
-      tx.pure.bool(isBid),
-      tx.pure.u64(expireTimestamp),
-      tx.object("0x6"), // Clock
-    ],
-  });
-  return tx;
-}
-
-// Move: place_market_order<B,Q>(pool, bm, client_order_id, quantity, is_bid, clock, ctx)
-export function buildPlaceMarketOrder({
-  packageId,
-  poolId,
-  balanceManagerId,
-  baseType,
-  quoteType,
-  clientOrderId,
-  quantity,
-  isBid,
-}: {
-  packageId: string;
-  poolId: string;
-  balanceManagerId: string;
-  baseType: string;
-  quoteType: string;
-  clientOrderId: number;
-  quantity: number;
-  isBid: boolean;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::place_market_order`,
-    typeArguments: [baseType, quoteType],
-    arguments: [
-      tx.object(poolId),
-      tx.object(balanceManagerId),
       tx.pure.u64(clientOrderId),
-      tx.pure.u64(quantity),
-      tx.pure.bool(isBid),
-      tx.object("0x6"), // Clock
     ],
-  });
-  return tx;
-}
-
-// Move: cancel_order<B,Q>(pool, bm, order_id, clock, ctx)
-export function buildCancelOrder({
-  packageId,
-  poolId,
-  balanceManagerId,
-  baseType,
-  quoteType,
-  orderId,
-}: {
-  packageId: string;
-  poolId: string;
-  balanceManagerId: string;
-  baseType: string;
-  quoteType: string;
-  orderId: string; // u128 as string
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::cancel_order`,
-    typeArguments: [baseType, quoteType],
-    arguments: [
-      tx.object(poolId),
-      tx.object(balanceManagerId),
-      tx.pure.u128(BigInt(orderId)),
-      tx.object("0x6"), // Clock
-    ],
-  });
-  return tx;
-}
-
-// Move: cancel_all_orders<B,Q>(pool, bm, clock, ctx)
-export function buildCancelAllOrders({
-  packageId,
-  poolId,
-  balanceManagerId,
-  baseType,
-  quoteType,
-}: {
-  packageId: string;
-  poolId: string;
-  balanceManagerId: string;
-  baseType: string;
-  quoteType: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::cancel_all_orders`,
-    typeArguments: [baseType, quoteType],
-    arguments: [
-      tx.object(poolId),
-      tx.object(balanceManagerId),
-      tx.object("0x6"), // Clock
-    ],
-  });
-  return tx;
-}
-
-// Move: claim_rebates<B,Q>(pool, bm, ctx)
-export function buildClaimRebates({
-  packageId,
-  poolId,
-  balanceManagerId,
-  baseType,
-  quoteType,
-}: {
-  packageId: string;
-  poolId: string;
-  balanceManagerId: string;
-  baseType: string;
-  quoteType: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::claim_rebates`,
-    typeArguments: [baseType, quoteType],
-    arguments: [tx.object(poolId), tx.object(balanceManagerId)],
-  });
-  return tx;
-}
-
-// Move: mint_trade_cap(balance_manager, ctx) -> TradeCap
-export function buildMintTradeCap({
-  packageId,
-  balanceManagerId,
-}: {
-  packageId: string;
-  balanceManagerId: string;
-}) {
-  const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::deepbook_adapter::mint_trade_cap`,
-    arguments: [tx.object(balanceManagerId)],
   });
   return tx;
 }

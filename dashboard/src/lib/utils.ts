@@ -50,9 +50,9 @@ export function statusColor(status: string): string {
 
 export function statusBg(status: string): string {
   switch (status) {
-    case "active": return "bg-eve-green/10 text-eve-green border-eve-green/20";
-    case "inactive": return "bg-eve-muted/10 text-eve-muted border-eve-muted/20";
-    case "emergency": return "bg-eve-red/10 text-eve-red border-eve-red/20";
-    default: return "bg-eve-muted/10 text-eve-muted border-eve-muted/20";
+    case "active": return "badge-active";
+    case "inactive": return "badge-inactive";
+    case "emergency": return "badge-emergency";
+    default: return "badge-inactive";
   }
 }

@@ -4,7 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useCorridor, useActivity, useChartData } from "@/hooks/use-corridors";
 import { formatSui, formatNumber, formatPercent, abbreviateAddress, timeAgo, statusBg } from "@/lib/utils";
-import { ArrowRight, ArrowLeft, Shield, Zap, Package } from "lucide-react";
+import { ArrowRight, ArrowLeft, Shield, Zap, Package, Loader2, AlertCircle } from "lucide-react";
 import { VolumeChart } from "@/components/dashboard/VolumeChart";
 
 export default function CorridorDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,15 +16,19 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-eve-muted">Loading corridor...</p>
+        <Loader2 className="w-5 h-5 text-eve-muted animate-spin" />
       </div>
     );
   }
 
   if (!corridor) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-eve-muted">Corridor not found</p>
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="w-12 h-12 rounded-xl bg-eve-elevated flex items-center justify-center mb-3">
+          <AlertCircle className="w-6 h-6 text-eve-muted" />
+        </div>
+        <p className="text-sm text-eve-text-dim">Corridor not found</p>
+        <Link href="/corridors" className="text-xs text-eve-orange mt-2 hover:underline">Back to corridors</Link>
       </div>
     );
   }
@@ -32,20 +36,19 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   const totalRevenue = corridor.totalTollRevenue + corridor.totalTradeRevenue;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8 max-w-[1400px]">
       <div className="flex items-center gap-4">
-        <Link href="/corridors" className="text-eve-text-dim hover:text-eve-text">
+        <Link href="/corridors" className="btn-ghost p-2">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold">{corridor.name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded border ${statusBg(corridor.status)}`}>
+            <h1 className="text-2xl font-semibold tracking-tight">{corridor.name}</h1>
+            <span className={`badge ${statusBg(corridor.status)}`}>
               {corridor.status}
             </span>
           </div>
-          <p className="text-sm text-eve-text-dim mt-1">
+          <p className="text-sm text-eve-text-dim mt-0.5">
             Operated by {abbreviateAddress(corridor.owner)}
           </p>
         </div>
@@ -54,71 +57,74 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
       {/* Route visualization */}
       <div className="card p-6">
         <div className="grid grid-cols-5 gap-4 items-center">
-          {/* Gate A */}
           <div className="text-center">
-            <div className="card-elevated p-4 mb-2">
-              <Shield className="w-6 h-6 text-eve-orange mx-auto mb-2" />
-              <div className="text-sm font-bold">{corridor.sourceGate.name}</div>
-              <div className="text-xs text-eve-text-dim">{corridor.sourceGate.solarSystem}</div>
-              <div className="text-xs text-eve-orange mt-1">
+            <div className="card-elevated p-4">
+              <div className="w-10 h-10 rounded-xl bg-eve-orange/10 flex items-center justify-center mx-auto mb-3">
+                <Shield className="w-5 h-5 text-eve-orange" />
+              </div>
+              <div className="text-sm font-semibold">{corridor.sourceGate.name || "Gate A"}</div>
+              <div className="text-xs text-eve-text-dim mt-0.5">{corridor.sourceGate.solarSystem || "Unknown"}</div>
+              <div className="text-xs text-eve-orange font-medium mt-2">
                 Toll: {formatSui(corridor.sourceGate.tollAmount)}
               </div>
               {corridor.sourceGate.surgeActive && (
-                <div className="text-xs text-yellow-400 flex items-center justify-center gap-1 mt-1">
-                  <Zap className="w-3 h-3" /> {corridor.sourceGate.surgeMultiplier / 100}% surge
+                <div className="badge badge-surge mt-2 mx-auto">
+                  <Zap className="w-3 h-3" /> {corridor.sourceGate.surgeMultiplier / 100}%
                 </div>
               )}
             </div>
           </div>
 
-          {/* Depot A */}
           <div className="text-center">
-            <div className="card-elevated p-4 mb-2">
-              <Package className="w-6 h-6 text-eve-blue mx-auto mb-2" />
-              <div className="text-sm font-bold">{corridor.depotA.name}</div>
-              <div className="text-xs text-eve-text-dim mt-1">
-                {corridor.depotA.inputItem.name} → {corridor.depotA.outputItem.name}
+            <div className="card-elevated p-4">
+              <div className="w-10 h-10 rounded-xl bg-eve-blue/10 flex items-center justify-center mx-auto mb-3">
+                <Package className="w-5 h-5 text-eve-blue" />
               </div>
-              <div className="text-xs text-eve-orange mt-1">
+              <div className="text-sm font-semibold">{corridor.depotA.name || "Depot A"}</div>
+              <div className="text-xs text-eve-text-dim mt-1">
+                {corridor.depotA.inputItem.name || "Input"} → {corridor.depotA.outputItem.name || "Output"}
+              </div>
+              <div className="text-xs text-eve-orange font-medium mt-1">
                 {corridor.depotA.ratioIn}:{corridor.depotA.ratioOut} ({formatPercent(corridor.depotA.feeBps)} fee)
               </div>
-              <div className="text-xs text-eve-text-dim mt-1">
-                Stock: {formatNumber(corridor.depotA.outputStock)} units
+              <div className="text-xs text-eve-muted mt-1">
+                Stock: {formatNumber(corridor.depotA.outputStock)}
               </div>
             </div>
           </div>
 
-          {/* Arrow */}
           <div className="flex flex-col items-center gap-2">
             <ArrowRight className="w-8 h-8 text-eve-orange" />
-            <div className="text-[10px] text-eve-text-dim uppercase tracking-wider">linked</div>
+            <div className="text-[10px] text-eve-text-faint uppercase tracking-wider font-medium">linked</div>
             <ArrowLeft className="w-8 h-8 text-eve-orange" />
           </div>
 
-          {/* Depot B */}
           <div className="text-center">
-            <div className="card-elevated p-4 mb-2">
-              <Package className="w-6 h-6 text-eve-blue mx-auto mb-2" />
-              <div className="text-sm font-bold">{corridor.depotB.name}</div>
-              <div className="text-xs text-eve-text-dim mt-1">
-                {corridor.depotB.inputItem.name} → {corridor.depotB.outputItem.name}
+            <div className="card-elevated p-4">
+              <div className="w-10 h-10 rounded-xl bg-eve-blue/10 flex items-center justify-center mx-auto mb-3">
+                <Package className="w-5 h-5 text-eve-blue" />
               </div>
-              <div className="text-xs text-eve-orange mt-1">
+              <div className="text-sm font-semibold">{corridor.depotB.name || "Depot B"}</div>
+              <div className="text-xs text-eve-text-dim mt-1">
+                {corridor.depotB.inputItem.name || "Input"} → {corridor.depotB.outputItem.name || "Output"}
+              </div>
+              <div className="text-xs text-eve-orange font-medium mt-1">
                 {corridor.depotB.ratioIn}:{corridor.depotB.ratioOut} ({formatPercent(corridor.depotB.feeBps)} fee)
               </div>
-              <div className="text-xs text-eve-text-dim mt-1">
-                Stock: {formatNumber(corridor.depotB.outputStock)} units
+              <div className="text-xs text-eve-muted mt-1">
+                Stock: {formatNumber(corridor.depotB.outputStock)}
               </div>
             </div>
           </div>
 
-          {/* Gate B */}
           <div className="text-center">
-            <div className="card-elevated p-4 mb-2">
-              <Shield className="w-6 h-6 text-eve-orange mx-auto mb-2" />
-              <div className="text-sm font-bold">{corridor.destGate.name}</div>
-              <div className="text-xs text-eve-text-dim">{corridor.destGate.solarSystem}</div>
-              <div className="text-xs text-eve-orange mt-1">
+            <div className="card-elevated p-4">
+              <div className="w-10 h-10 rounded-xl bg-eve-orange/10 flex items-center justify-center mx-auto mb-3">
+                <Shield className="w-5 h-5 text-eve-orange" />
+              </div>
+              <div className="text-sm font-semibold">{corridor.destGate.name || "Gate B"}</div>
+              <div className="text-xs text-eve-text-dim mt-0.5">{corridor.destGate.solarSystem || "Unknown"}</div>
+              <div className="text-xs text-eve-orange font-medium mt-2">
                 Toll: {formatSui(corridor.destGate.tollAmount)}
               </div>
             </div>
@@ -131,13 +137,13 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
         {[
           { label: "Total Revenue", value: formatSui(totalRevenue), sub: `Toll: ${formatSui(corridor.totalTollRevenue)} / Trade: ${formatSui(corridor.totalTradeRevenue)}` },
           { label: "Total Jumps", value: formatNumber(corridor.totalJumps), sub: `Since ${new Date(corridor.createdAt).toLocaleDateString()}` },
-          { label: "Total Trades", value: formatNumber(corridor.totalTrades), sub: `Across both depots` },
+          { label: "Total Trades", value: formatNumber(corridor.totalTrades), sub: "Across both depots" },
           { label: "Last Activity", value: timeAgo(corridor.lastActivityAt), sub: `Created ${timeAgo(corridor.createdAt)}` },
         ].map((stat) => (
-          <div key={stat.label} className="card p-4">
-            <div className="text-xs text-eve-text-dim uppercase tracking-wider">{stat.label}</div>
-            <div className="text-lg font-bold text-eve-orange mt-1">{stat.value}</div>
-            <div className="text-xs text-eve-muted mt-1">{stat.sub}</div>
+          <div key={stat.label} className="card p-5">
+            <div className="stat-label">{stat.label}</div>
+            <div className="text-xl font-semibold text-eve-orange mt-1">{stat.value}</div>
+            <div className="stat-sub">{stat.sub}</div>
           </div>
         ))}
       </div>
@@ -147,26 +153,26 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
         <div className="lg:col-span-2">
           <VolumeChart data={chartData} />
         </div>
-        <div className="card p-4">
-          <h3 className="text-sm font-bold mb-3">Corridor Activity</h3>
-          <div className="space-y-3">
-            {events.length === 0 ? (
-              <p className="text-xs text-eve-muted">No recent activity</p>
-            ) : (
-              events.map((e) => (
+        <div className="card p-5">
+          <h3 className="section-title mb-4">Corridor Activity</h3>
+          {events.length === 0 ? (
+            <p className="text-xs text-eve-muted py-4 text-center">No recent activity for this corridor</p>
+          ) : (
+            <div className="space-y-3">
+              {events.map((e) => (
                 <div key={e.id} className="flex items-start gap-3 text-xs">
                   <div className="w-1.5 h-1.5 rounded-full bg-eve-orange mt-1.5 shrink-0" />
                   <div className="flex-1">
-                    <div className="text-eve-text">{e.description}</div>
+                    <div className="text-eve-text text-[13px]">{e.description}</div>
                     <div className="text-eve-muted">{timeAgo(e.timestamp)}</div>
                   </div>
-                  {e.value && (
-                    <div className="text-eve-orange shrink-0">{formatSui(e.value)}</div>
+                  {e.value != null && e.value > 0 && (
+                    <div className="text-eve-orange font-medium shrink-0">{formatSui(e.value)}</div>
                   )}
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

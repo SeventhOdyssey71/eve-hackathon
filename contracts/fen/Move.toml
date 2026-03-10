@@ -1,0 +1,9 @@
+[package]
+name = "fen"
+edition = "2024"
+
+[dependencies]
+World = { local = "../../world-contracts/contracts/world" }
+
+[addresses]
+fen = "0x0"

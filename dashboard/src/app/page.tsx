@@ -13,9 +13,9 @@ export default function DashboardPage() {
   const { data: chartData } = useChartData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-[1400px]">
       <div>
-        <h1 className="text-xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-eve-text-dim mt-1">Frontier Exchange Network overview</p>
       </div>
 

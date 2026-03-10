@@ -14,15 +14,13 @@ import {
   buildWithdrawAll,
   buildActivateCorridor,
   buildDeactivateCorridor,
-  buildCreateBalanceManager,
   buildLinkBalanceManager,
-  buildDepositSui,
-  buildWithdrawSui,
-  buildSwapSuiForDeep,
-  buildSwapDeepForSui,
-  buildPlaceLimitOrder,
-  buildCancelAllOrders,
-  buildClaimRebates,
+  buildUnlinkBalanceManager,
+  buildRecordOrderPlaced,
+  buildCreateTreasury,
+  buildWithdraw,
+  buildActivateDepot,
+  buildDeactivateDepot,
 } from "@/lib/transactions";
 import type { Transaction } from "@mysten/sui/transactions";
 
@@ -36,7 +34,6 @@ function useFenTx() {
   const account = useCurrentAccount();
   const packageId = useNetworkVariable("fenPackageId");
   const registryId = useNetworkVariable("corridorRegistryId");
-  const configId = useNetworkVariable("fenConfigId");
 
   const execute = useCallback(
     async (buildTx: () => Transaction) => {
@@ -63,7 +60,7 @@ function useFenTx() {
     [account, signAndExecute]
   );
 
-  return { status, error, digest, execute, account, packageId, registryId, configId };
+  return { status, error, digest, execute, account, packageId, registryId };
 }
 
 export function useRegisterCorridor() {
@@ -95,18 +92,17 @@ export function useSetTollConfig() {
   const { execute, ...rest } = useFenTx();
 
   const setTollConfig = useCallback(
-    (adminCapId: string, gateId: string, tollAmount: number, feeRecipient: string) =>
+    (corridorId: string, ownerCapId: string, gateId: string, tollAmount: number) =>
       execute(() =>
         buildSetTollConfig({
           packageId: rest.packageId,
-          configId: rest.configId,
-          adminCapId,
+          corridorId,
+          ownerCapId,
           gateId,
           tollAmount,
-          feeRecipient,
         })
       ),
-    [execute, rest.packageId, rest.configId]
+    [execute, rest.packageId]
   );
 
   return { setTollConfig, ...rest };
@@ -116,30 +112,30 @@ export function useSurgeControl() {
   const { execute, ...rest } = useFenTx();
 
   const activateSurge = useCallback(
-    (adminCapId: string, gateId: string, surgeNumerator: number) =>
+    (corridorId: string, ownerCapId: string, gateId: string, surgeNumerator: number) =>
       execute(() =>
         buildActivateSurge({
           packageId: rest.packageId,
-          configId: rest.configId,
-          adminCapId,
+          corridorId,
+          ownerCapId,
           gateId,
           surgeNumerator,
         })
       ),
-    [execute, rest.packageId, rest.configId]
+    [execute, rest.packageId]
   );
 
   const deactivateSurge = useCallback(
-    (adminCapId: string, gateId: string) =>
+    (corridorId: string, ownerCapId: string, gateId: string) =>
       execute(() =>
         buildDeactivateSurge({
           packageId: rest.packageId,
-          configId: rest.configId,
-          adminCapId,
+          corridorId,
+          ownerCapId,
           gateId,
         })
       ),
-    [execute, rest.packageId, rest.configId]
+    [execute, rest.packageId]
   );
 
   return { activateSurge, deactivateSurge, ...rest };
@@ -149,29 +145,27 @@ export function useEmergencyControl() {
   const { execute, ...rest } = useFenTx();
 
   const emergencyLock = useCallback(
-    (adminCapId: string, gateId: string) =>
+    (corridorId: string, ownerCapId: string) =>
       execute(() =>
         buildEmergencyLock({
           packageId: rest.packageId,
-          configId: rest.configId,
-          adminCapId,
-          gateId,
+          corridorId,
+          ownerCapId,
         })
       ),
-    [execute, rest.packageId, rest.configId]
+    [execute, rest.packageId]
   );
 
   const emergencyUnlock = useCallback(
-    (adminCapId: string, gateId: string) =>
+    (corridorId: string, ownerCapId: string) =>
       execute(() =>
         buildEmergencyUnlock({
           packageId: rest.packageId,
-          configId: rest.configId,
-          adminCapId,
-          gateId,
+          corridorId,
+          ownerCapId,
         })
       ),
-    [execute, rest.packageId, rest.configId]
+    [execute, rest.packageId]
   );
 
   return { emergencyLock, emergencyUnlock, ...rest };
@@ -181,17 +175,17 @@ export function useCorridorStatus() {
   const { execute, ...rest } = useFenTx();
 
   const activateCorridor = useCallback(
-    (corridorId: string) =>
+    (corridorId: string, ownerCapId: string) =>
       execute(() =>
-        buildActivateCorridor({ packageId: rest.packageId, corridorId })
+        buildActivateCorridor({ packageId: rest.packageId, corridorId, ownerCapId })
       ),
     [execute, rest.packageId]
   );
 
   const deactivateCorridor = useCallback(
-    (corridorId: string) =>
+    (corridorId: string, ownerCapId: string) =>
       execute(() =>
-        buildDeactivateCorridor({ packageId: rest.packageId, corridorId })
+        buildDeactivateCorridor({ packageId: rest.packageId, corridorId, ownerCapId })
       ),
     [execute, rest.packageId]
   );
@@ -203,9 +197,9 @@ export function useWithdrawRevenue() {
   const { execute, ...rest } = useFenTx();
 
   const withdrawAll = useCallback(
-    (treasuryId: string) =>
+    (treasuryId: string, ownerCapId: string) =>
       execute(() =>
-        buildWithdrawAll({ packageId: rest.packageId, treasuryId })
+        buildWithdrawAll({ packageId: rest.packageId, treasuryId, ownerCapId })
       ),
     [execute, rest.packageId]
   );
@@ -218,7 +212,8 @@ export function useDepotConfig() {
 
   const setDepotConfig = useCallback(
     (params: {
-      adminCapId: string;
+      corridorId: string;
+      ownerCapId: string;
       storageUnitId: string;
       inputTypeId: number;
       outputTypeId: number;
@@ -229,14 +224,79 @@ export function useDepotConfig() {
       execute(() =>
         buildSetDepotConfig({
           packageId: rest.packageId,
-          configId: rest.configId,
           ...params,
         })
       ),
-    [execute, rest.packageId, rest.configId]
+    [execute, rest.packageId]
   );
 
-  return { setDepotConfig, ...rest };
+  const activateDepot = useCallback(
+    (corridorId: string, ownerCapId: string, storageUnitId: string) =>
+      execute(() =>
+        buildActivateDepot({
+          packageId: rest.packageId,
+          corridorId,
+          ownerCapId,
+          storageUnitId,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const deactivateDepot = useCallback(
+    (corridorId: string, ownerCapId: string, storageUnitId: string) =>
+      execute(() =>
+        buildDeactivateDepot({
+          packageId: rest.packageId,
+          corridorId,
+          ownerCapId,
+          storageUnitId,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  return { setDepotConfig, activateDepot, deactivateDepot, ...rest };
+}
+
+export function useTreasury() {
+  const { execute, ...rest } = useFenTx();
+
+  const createTreasury = useCallback(
+    (corridorId: string, ownerCapId: string, feeRecipient: string) =>
+      execute(() =>
+        buildCreateTreasury({
+          packageId: rest.packageId,
+          corridorId,
+          ownerCapId,
+          feeRecipient,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const withdraw = useCallback(
+    (treasuryId: string, ownerCapId: string, amount: number) =>
+      execute(() =>
+        buildWithdraw({
+          packageId: rest.packageId,
+          treasuryId,
+          ownerCapId,
+          amount,
+        })
+      ),
+    [execute, rest.packageId]
+  );
+
+  const withdrawAll = useCallback(
+    (treasuryId: string, ownerCapId: string) =>
+      execute(() =>
+        buildWithdrawAll({ packageId: rest.packageId, treasuryId, ownerCapId })
+      ),
+    [execute, rest.packageId]
+  );
+
+  return { createTreasury, withdraw, withdrawAll, ...rest };
 }
 
 // --- DeepBook Hooks ---
@@ -244,131 +304,59 @@ export function useDepotConfig() {
 export function useDeepBookBalanceManager() {
   const { execute, ...rest } = useFenTx();
 
-  const createBalanceManager = useCallback(
-    () =>
-      execute(() =>
-        buildCreateBalanceManager({ packageId: rest.packageId })
-      ),
-    [execute, rest.packageId]
-  );
-
   const linkBalanceManager = useCallback(
-    (adminCapId: string, corridorId: string, balanceManagerId: string, operator: string) =>
+    (registryId: string, ownerCapId: string, corridorId: string, balanceManagerId: string, operator: string) =>
       execute(() =>
         buildLinkBalanceManager({
           packageId: rest.packageId,
-          configId: rest.configId,
-          adminCapId,
+          registryId,
+          ownerCapId,
           corridorId,
           balanceManagerId,
           operator,
         })
       ),
-    [execute, rest.packageId, rest.configId]
-  );
-
-  const depositSui = useCallback(
-    (balanceManagerId: string, coinId: string) =>
-      execute(() =>
-        buildDepositSui({ packageId: rest.packageId, balanceManagerId, coinId })
-      ),
     [execute, rest.packageId]
   );
 
-  const withdrawSui = useCallback(
-    (balanceManagerId: string, amount: number) =>
+  const unlinkBalanceManager = useCallback(
+    (registryId: string, ownerCapId: string, corridorId: string) =>
       execute(() =>
-        buildWithdrawSui({ packageId: rest.packageId, balanceManagerId, amount })
-      ),
-    [execute, rest.packageId]
-  );
-
-  return { createBalanceManager, linkBalanceManager, depositSui, withdrawSui, ...rest };
-}
-
-export function useDeepBookSwap() {
-  const { execute, ...rest } = useFenTx();
-
-  const swapSuiForDeep = useCallback(
-    (poolId: string, suiCoinId: string, deepFeeCoinId: string, minDeepOut: number) =>
-      execute(() =>
-        buildSwapSuiForDeep({
+        buildUnlinkBalanceManager({
           packageId: rest.packageId,
-          poolId,
-          suiCoinId,
-          deepFeeCoinId,
-          minDeepOut,
+          registryId,
+          ownerCapId,
+          corridorId,
         })
       ),
     [execute, rest.packageId]
   );
 
-  const swapDeepForSui = useCallback(
-    (poolId: string, deepCoinId: string, deepFeeCoinId: string, minSuiOut: number) =>
-      execute(() =>
-        buildSwapDeepForSui({
-          packageId: rest.packageId,
-          poolId,
-          deepCoinId,
-          deepFeeCoinId,
-          minSuiOut,
-        })
-      ),
-    [execute, rest.packageId]
-  );
-
-  return { swapSuiForDeep, swapDeepForSui, ...rest };
+  return { linkBalanceManager, unlinkBalanceManager, ...rest };
 }
 
 export function useDeepBookOrders() {
   const { execute, ...rest } = useFenTx();
 
-  const placeLimitOrder = useCallback(
+  const recordOrderPlaced = useCallback(
     (params: {
+      registryId: string;
+      ownerCapId: string;
+      corridorId: string;
       poolId: string;
-      balanceManagerId: string;
-      baseType: string;
-      quoteType: string;
-      clientOrderId: number;
-      orderType: number;
+      isBid: boolean;
       price: number;
       quantity: number;
-      isBid: boolean;
-      expireTimestamp: number;
+      clientOrderId: number;
     }) =>
       execute(() =>
-        buildPlaceLimitOrder({ packageId: rest.packageId, ...params })
-      ),
-    [execute, rest.packageId]
-  );
-
-  const cancelAllOrders = useCallback(
-    (poolId: string, balanceManagerId: string, baseType: string, quoteType: string) =>
-      execute(() =>
-        buildCancelAllOrders({
+        buildRecordOrderPlaced({
           packageId: rest.packageId,
-          poolId,
-          balanceManagerId,
-          baseType,
-          quoteType,
+          ...params,
         })
       ),
     [execute, rest.packageId]
   );
 
-  const claimRebates = useCallback(
-    (poolId: string, balanceManagerId: string, baseType: string, quoteType: string) =>
-      execute(() =>
-        buildClaimRebates({
-          packageId: rest.packageId,
-          poolId,
-          balanceManagerId,
-          baseType,
-          quoteType,
-        })
-      ),
-    [execute, rest.packageId]
-  );
-
-  return { placeLimitOrder, cancelAllOrders, claimRebates, ...rest };
+  return { recordOrderPlaced, ...rest };
 }
