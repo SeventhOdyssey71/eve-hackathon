@@ -5,6 +5,7 @@ authors = ["Frontier Exchange Network"]
 
 [dependencies]
 World = { local = "../world-contracts/contracts/world" }
+deepbook = { git = "https://github.com/MystenLabs/deepbookv3.git", subdir = "packages/deepbook", rev = "df0b49f" }
 
 [addresses]
 fen = "0x0"

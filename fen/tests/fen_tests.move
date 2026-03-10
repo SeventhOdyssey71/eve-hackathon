@@ -14,6 +14,8 @@ use fen::config::{Self, FenConfig, AdminCap};
 use fen::corridor::{Self, CorridorRegistry, Corridor};
 use fen::treasury::{Self, Treasury};
 use fen::route_graph::{Self, RouteGraph};
+use fen::deepbook_adapter;
+use deepbook::balance_manager::BalanceManager;
 
 // Test addresses (valid hex)
 const ADMIN: address = @0xA1;
@@ -1913,6 +1915,185 @@ fun test_route_graph_set_edge_active() {
         assert!(route_graph::edge_is_active(&route_graph::edges(adj)[0]));
 
         ts::return_shared(graph);
+    };
+    scenario.end();
+}
+
+// === DeepBook Adapter Tests ===
+
+#[test]
+fun test_deepbook_link_balance_manager() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let corridor_id = object::id_from_address(CORRIDOR1_ADDR);
+        let bm_id = object::id_from_address(@0x5001);
+
+        // Link corridor to a BalanceManager
+        deepbook_adapter::link_balance_manager(
+            &mut fen_config,
+            &admin_cap,
+            corridor_id,
+            bm_id,
+            OPERATOR,
+        );
+
+        // Verify the link exists
+        assert!(deepbook_adapter::has_manager(&fen_config, corridor_id));
+
+        // Verify link data
+        let link = deepbook_adapter::get_manager_link(&fen_config, corridor_id);
+        assert!(deepbook_adapter::manager_id(link) == bm_id);
+        assert!(deepbook_adapter::manager_operator(link) == OPERATOR);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_deepbook_link_overwrite() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+        let corridor_id = object::id_from_address(CORRIDOR1_ADDR);
+        let bm_id_1 = object::id_from_address(@0x5001);
+        let bm_id_2 = object::id_from_address(@0x5002);
+
+        // Link to first manager
+        deepbook_adapter::link_balance_manager(
+            &mut fen_config, &admin_cap, corridor_id, bm_id_1, OPERATOR,
+        );
+        assert!(deepbook_adapter::manager_id(
+            deepbook_adapter::get_manager_link(&fen_config, corridor_id)
+        ) == bm_id_1);
+
+        // Overwrite with second manager
+        deepbook_adapter::link_balance_manager(
+            &mut fen_config, &admin_cap, corridor_id, bm_id_2, FEE_ADDR,
+        );
+        let link = deepbook_adapter::get_manager_link(&fen_config, corridor_id);
+        assert!(deepbook_adapter::manager_id(link) == bm_id_2);
+        assert!(deepbook_adapter::manager_operator(link) == FEE_ADDR);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_deepbook_has_manager_false() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let fen_config = scenario.take_shared<FenConfig>();
+        let corridor_id = object::id_from_address(CORRIDOR1_ADDR);
+
+        // No manager linked yet
+        assert!(!deepbook_adapter::has_manager(&fen_config, corridor_id));
+
+        ts::return_shared(fen_config);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_deepbook_create_balance_manager() {
+    let mut scenario = ts::begin(OPERATOR);
+    {
+        let bm = deepbook_adapter::create_balance_manager(scenario.ctx());
+        transfer::public_share_object(bm);
+    };
+    scenario.next_tx(OPERATOR);
+    {
+        let bm = scenario.take_shared<BalanceManager>();
+        // BalanceManager created successfully and is shared
+        assert!(deepbook_adapter::sui_balance(&bm) == 0);
+        assert!(deepbook_adapter::deep_balance(&bm) == 0);
+        ts::return_shared(bm);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_deepbook_deposit_withdraw_sui() {
+    let mut scenario = ts::begin(OPERATOR);
+    {
+        let bm = deepbook_adapter::create_balance_manager(scenario.ctx());
+        transfer::public_share_object(bm);
+    };
+    scenario.next_tx(OPERATOR);
+    {
+        let mut bm = scenario.take_shared<BalanceManager>();
+
+        // Deposit 5 SUI
+        let sui_coin = coin::mint_for_testing<SUI>(5_000_000_000, scenario.ctx());
+        deepbook_adapter::deposit_sui(&mut bm, sui_coin, scenario.ctx());
+        assert!(deepbook_adapter::sui_balance(&bm) == 5_000_000_000);
+
+        // Withdraw 2 SUI
+        let withdrawn = deepbook_adapter::withdraw_sui(&mut bm, 2_000_000_000, scenario.ctx());
+        assert!(coin::value(&withdrawn) == 2_000_000_000);
+        assert!(deepbook_adapter::sui_balance(&bm) == 3_000_000_000);
+
+        transfer::public_transfer(withdrawn, OPERATOR);
+        ts::return_shared(bm);
+    };
+    scenario.end();
+}
+
+#[test]
+fun test_deepbook_multiple_corridors_independent_links() {
+    let mut scenario = ts::begin(ADMIN);
+    {
+        config::init_for_testing(scenario.ctx());
+    };
+    scenario.next_tx(ADMIN);
+    {
+        let mut fen_config = scenario.take_shared<FenConfig>();
+        let admin_cap = scenario.take_from_sender<AdminCap>();
+
+        let corridor_1 = object::id_from_address(CORRIDOR1_ADDR);
+        let corridor_2 = object::id_from_address(@0x4002);
+        let bm_1 = object::id_from_address(@0x5001);
+        let bm_2 = object::id_from_address(@0x5002);
+
+        // Link two different corridors to different managers
+        deepbook_adapter::link_balance_manager(
+            &mut fen_config, &admin_cap, corridor_1, bm_1, OPERATOR,
+        );
+        deepbook_adapter::link_balance_manager(
+            &mut fen_config, &admin_cap, corridor_2, bm_2, FEE_ADDR,
+        );
+
+        // Verify independence
+        assert!(deepbook_adapter::has_manager(&fen_config, corridor_1));
+        assert!(deepbook_adapter::has_manager(&fen_config, corridor_2));
+
+        let link1 = deepbook_adapter::get_manager_link(&fen_config, corridor_1);
+        let link2 = deepbook_adapter::get_manager_link(&fen_config, corridor_2);
+        assert!(deepbook_adapter::manager_id(link1) == bm_1);
+        assert!(deepbook_adapter::manager_id(link2) == bm_2);
+        assert!(deepbook_adapter::manager_operator(link1) == OPERATOR);
+        assert!(deepbook_adapter::manager_operator(link2) == FEE_ADDR);
+
+        scenario.return_to_sender(admin_cap);
+        ts::return_shared(fen_config);
     };
     scenario.end();
 }
