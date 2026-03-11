@@ -511,18 +511,39 @@ export function useDashboardStats(): {
   stats: DashboardStats;
   isLoading: boolean;
 } {
-  const { corridors, isLoading } = useCorridors();
+  const { corridors, isLoading: corridorsLoading } = useCorridors();
+  const [apiStats, setApiStats] = useState<Record<string, unknown> | null>(null);
+  const [apiLoading, setApiLoading] = useState(true);
 
-  const stats: DashboardStats = {
-    totalCorridors: corridors.length,
-    activeCorridors: corridors.filter((c) => c.status === "active").length,
-    totalVolume24h: 0,
-    totalRevenue24h: corridors.reduce((sum, c) => sum + c.totalTollRevenue + c.totalTradeRevenue, 0),
-    totalJumps24h: corridors.reduce((sum, c) => sum + c.totalJumps, 0),
-    totalTrades24h: corridors.reduce((sum, c) => sum + c.totalTrades, 0),
-  };
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled) setApiStats(data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setApiLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-  return { stats, isLoading };
+  const stats: DashboardStats = apiStats
+    ? {
+        totalCorridors: Number(apiStats.totalCorridors || corridors.length),
+        activeCorridors: Number(apiStats.activeCorridors || 0),
+        totalVolume24h: 0,
+        totalRevenue24h: Number(apiStats.totalRevenue || 0),
+        totalJumps24h: Number(apiStats.totalJumps || 0),
+        totalTrades24h: Number(apiStats.totalTrades || 0),
+      }
+    : {
+        totalCorridors: corridors.length,
+        activeCorridors: corridors.filter((c) => c.status === "active").length,
+        totalVolume24h: 0,
+        totalRevenue24h: corridors.reduce((sum, c) => sum + c.totalTollRevenue + c.totalTradeRevenue, 0),
+        totalJumps24h: corridors.reduce((sum, c) => sum + c.totalJumps, 0),
+        totalTrades24h: corridors.reduce((sum, c) => sum + c.totalTrades, 0),
+      };
+
+  return { stats, isLoading: corridorsLoading && apiLoading };
 }
 
 export function useActivity(corridorId?: string): {
@@ -693,13 +714,27 @@ export function useTradeRoutes(): {
 }
 
 export function useChartData() {
-  return {
-    data: Array.from({ length: 24 }, (_, i) => ({
+  const [chartData, setChartData] = useState(
+    Array.from({ length: 24 }, (_, i) => ({
       hour: `${String(i).padStart(2, "0")}:00`,
       jumps: 0,
       trades: 0,
       revenue: 0,
-    })),
-    isLoading: false,
-  };
+    }))
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.chartData && Array.isArray(data.chartData)) {
+          setChartData(data.chartData);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  return { data: chartData, isLoading: false };
 }
