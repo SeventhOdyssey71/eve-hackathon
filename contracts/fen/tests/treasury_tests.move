@@ -170,3 +170,169 @@ fun test_withdraw_more_than_balance_fails() {
 
     scenario.end();
 }
+
+#[test]
+fun test_update_fee_recipient() {
+    let new_recipient: address = @0xCAFE;
+
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        treasury::create_treasury(object::id(&corridor), &owner_cap, OWNER, scenario.ctx());
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut treasury = scenario.take_shared<Treasury>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+
+        assert!(treasury::fee_recipient(&treasury) == OWNER);
+        treasury::update_fee_recipient(&mut treasury, &owner_cap, new_recipient);
+        assert!(treasury::fee_recipient(&treasury) == new_recipient);
+
+        ts::return_shared(treasury);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_multiple_deposits() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        treasury::create_treasury(object::id(&corridor), &owner_cap, OWNER, scenario.ctx());
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut treasury = scenario.take_shared<Treasury>();
+
+        let c1 = coin::mint_for_testing<SUI>(100_000_000, scenario.ctx());
+        treasury::deposit(&mut treasury, c1);
+        assert!(treasury::balance_value(&treasury) == 100_000_000);
+        assert!(treasury::total_deposited(&treasury) == 100_000_000);
+
+        let c2 = coin::mint_for_testing<SUI>(200_000_000, scenario.ctx());
+        treasury::deposit(&mut treasury, c2);
+        assert!(treasury::balance_value(&treasury) == 300_000_000);
+        assert!(treasury::total_deposited(&treasury) == 300_000_000);
+
+        let c3 = coin::mint_for_testing<SUI>(700_000_000, scenario.ctx());
+        treasury::deposit(&mut treasury, c3);
+        assert!(treasury::balance_value(&treasury) == 1_000_000_000);
+        assert!(treasury::total_deposited(&treasury) == 1_000_000_000);
+
+        ts::return_shared(treasury);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_withdraw_all_empty_treasury() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        treasury::create_treasury(object::id(&corridor), &owner_cap, OWNER, scenario.ctx());
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut treasury = scenario.take_shared<Treasury>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+
+        treasury::withdraw_all(&mut treasury, &owner_cap, scenario.ctx());
+        assert!(treasury::balance_value(&treasury) == 0);
+        assert!(treasury::total_withdrawn(&treasury) == 0);
+
+        ts::return_shared(treasury);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_deposit_withdraw_deposit_again() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        treasury::create_treasury(object::id(&corridor), &owner_cap, OWNER, scenario.ctx());
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut treasury = scenario.take_shared<Treasury>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+
+        let c1 = coin::mint_for_testing<SUI>(500_000_000, scenario.ctx());
+        treasury::deposit(&mut treasury, c1);
+
+        treasury::withdraw(&mut treasury, &owner_cap, 200_000_000, scenario.ctx());
+        assert!(treasury::balance_value(&treasury) == 300_000_000);
+
+        let c2 = coin::mint_for_testing<SUI>(400_000_000, scenario.ctx());
+        treasury::deposit(&mut treasury, c2);
+        assert!(treasury::balance_value(&treasury) == 700_000_000);
+        assert!(treasury::total_deposited(&treasury) == 900_000_000);
+        assert!(treasury::total_withdrawn(&treasury) == 200_000_000);
+
+        ts::return_shared(treasury);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_treasury_corridor_id() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let cid = object::id(&corridor);
+        treasury::create_treasury(cid, &owner_cap, OWNER, scenario.ctx());
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let treasury = scenario.take_shared<Treasury>();
+        assert!(treasury::corridor_id(&treasury) == object::id(&corridor));
+        ts::return_shared(treasury);
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}

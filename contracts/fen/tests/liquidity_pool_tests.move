@@ -1000,3 +1000,389 @@ fun test_two_pools_on_same_corridor() {
 
     scenario.end();
 }
+
+// ===== Additional AMM Math Edge Cases =====
+
+#[test]
+fun test_compute_output_large_values_no_overflow() {
+    // Test with large reserve values to verify u128 intermediate safety
+    let (output, fee) = liquidity_pool::compute_output(
+        1_000_000_000_000, // 1 trillion reserve_in
+        1_000_000_000_000, // 1 trillion reserve_out
+        100_000_000,       // 100M amount_in
+        300,               // 3% fee
+    );
+    // amount_after_fee = 100M * 9700 / 10000 = 97_000_000
+    // output = (97M * 1T) / (1T + 97M) = 97e18 / 1.000097e12 = 96_990_617
+    assert!(output > 96_000_000);
+    assert!(output < 100_000_000);
+    assert!(fee == 3_000_000);
+}
+
+#[test]
+fun test_compute_output_one_to_one_no_fee() {
+    // Equal reserves, 1 unit in, no fee
+    let (output, fee) = liquidity_pool::compute_output(1000, 1000, 1, 0);
+    // output = (1 * 1000) / (1000 + 1) = 1000 / 1001 = 0
+    // Very small trade relative to reserves → rounds to 0
+    assert!(output == 0);
+    assert!(fee == 0);
+}
+
+#[test]
+fun test_compute_output_minimum_viable_trade() {
+    // Find the minimum trade that produces non-zero output
+    let (output, _) = liquidity_pool::compute_output(100, 10_000, 1, 0);
+    // output = (1 * 10000) / (100 + 1) = 10000 / 101 = 99
+    assert!(output == 99);
+}
+
+#[test]
+fun test_spot_price_large_reserves() {
+    let price = liquidity_pool::spot_price_sui_per_item(
+        100_000_000_000_000, // 100K SUI
+        1_000_000,           // 1M items
+    );
+    // (100K * 1e9 * 1e9) / 1M = 1e23 / 1e6 = 1e17
+    assert!(price == 100_000_000_000_000_000);
+}
+
+#[test]
+fun test_price_impact_with_fee() {
+    // Fee should increase effective price impact
+    let impact_no_fee = liquidity_pool::price_impact_bps(1000, 10_000_000, 100, 0);
+    let impact_with_fee = liquidity_pool::price_impact_bps(1000, 10_000_000, 100, 500);
+    // With fee, effective output is less, so impact should be higher
+    assert!(impact_with_fee > impact_no_fee);
+}
+
+// ===== Pool Lifecycle Edge Cases =====
+
+#[test, expected_failure(abort_code = liquidity_pool::EPoolNotConfigured)]
+fun test_activate_nonexistent_pool_fails() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        // No pool created — try to activate
+        liquidity_pool::activate_pool(&mut corridor, &owner_cap, su_id);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test, expected_failure(abort_code = liquidity_pool::EPoolNotConfigured)]
+fun test_deactivate_nonexistent_pool_fails() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        liquidity_pool::deactivate_pool(&mut corridor, &owner_cap, su_id);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_pool_reactivation() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let sui = coin::mint_for_testing<SUI>(1_000_000_000, scenario.ctx());
+        liquidity_pool::create_pool(&mut corridor, &owner_cap, su_id, ITEM_TYPE, 30, sui, 100);
+
+        // Activate -> Deactivate -> Activate
+        liquidity_pool::activate_pool(&mut corridor, &owner_cap, su_id);
+        assert!(liquidity_pool::is_pool_active(&corridor, su_id));
+
+        liquidity_pool::deactivate_pool(&mut corridor, &owner_cap, su_id);
+        assert!(!liquidity_pool::is_pool_active(&corridor, su_id));
+
+        liquidity_pool::activate_pool(&mut corridor, &owner_cap, su_id);
+        assert!(liquidity_pool::is_pool_active(&corridor, su_id));
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_create_pool_max_fee() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let sui = coin::mint_for_testing<SUI>(1_000_000_000, scenario.ctx());
+        liquidity_pool::create_pool(&mut corridor, &owner_cap, su_id, ITEM_TYPE, 5000, sui, 100);
+
+        assert!(liquidity_pool::get_pool_fee(&corridor, su_id) == 5000);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_create_pool_zero_fee() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let sui = coin::mint_for_testing<SUI>(1_000_000_000, scenario.ctx());
+        liquidity_pool::create_pool(&mut corridor, &owner_cap, su_id, ITEM_TYPE, 0, sui, 100);
+
+        assert!(liquidity_pool::get_pool_fee(&corridor, su_id) == 0);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+// ===== Liquidity After Trading =====
+
+#[test]
+fun test_add_liquidity_after_trades() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let initial_sui = balance::create_for_testing<SUI>(10_000_000_000);
+        liquidity_pool::create_test_pool(
+            &mut corridor, &owner_cap, su_id, ITEM_TYPE, 100, initial_sui, 100,
+        );
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    // Trade to change reserves
+    scenario.next_tx(TRADER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+        let sui_out = liquidity_pool::test_sell(&mut corridor, su_id, 20, 0, scenario.ctx());
+        coin::burn_for_testing(sui_out);
+        ts::return_shared(corridor);
+    };
+
+    // Add liquidity after trading
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let (r_sui_before, r_items_before) = liquidity_pool::get_reserves(&corridor, su_id);
+
+        let more_sui = coin::mint_for_testing<SUI>(5_000_000_000, scenario.ctx());
+        liquidity_pool::add_liquidity(&mut corridor, &owner_cap, su_id, more_sui, 50);
+
+        let (r_sui_after, r_items_after) = liquidity_pool::get_reserves(&corridor, su_id);
+        assert!(r_sui_after == r_sui_before + 5_000_000_000);
+        assert!(r_items_after == r_items_before + 50);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_sell_with_zero_fee() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let initial_sui = balance::create_for_testing<SUI>(10_000_000_000);
+        liquidity_pool::create_test_pool(
+            &mut corridor, &owner_cap, su_id, ITEM_TYPE, 0, initial_sui, 100,
+        );
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(TRADER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let sui_out = liquidity_pool::test_sell(&mut corridor, su_id, 10, 0, scenario.ctx());
+        // With 0% fee: amount_after_fee = 10
+        // output = (10 * 10B) / (100 + 10) = 909_090_909
+        assert!(coin::value(&sui_out) == 909_090_909);
+
+        coin::burn_for_testing(sui_out);
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_buy_with_zero_fee() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let initial_sui = balance::create_for_testing<SUI>(10_000_000_000);
+        liquidity_pool::create_test_pool(
+            &mut corridor, &owner_cap, su_id, ITEM_TYPE, 0, initial_sui, 100,
+        );
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.next_tx(TRADER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let payment = coin::mint_for_testing<SUI>(1_000_000_000, scenario.ctx());
+        let items = liquidity_pool::test_buy(&mut corridor, su_id, payment, 0);
+        // output = (1B * 100) / (10B + 1B) = 100B / 11B = 9
+        assert!(items == 9);
+
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_fee_accumulation_across_swaps() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let initial_sui = balance::create_for_testing<SUI>(10_000_000_000);
+        liquidity_pool::create_test_pool(
+            &mut corridor, &owner_cap, su_id, ITEM_TYPE, 300, initial_sui, 1000,
+        );
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    // Multiple sells
+    let mut i = 0;
+    while (i < 3) {
+        scenario.next_tx(TRADER);
+        {
+            let mut corridor = scenario.take_shared<Corridor>();
+            let su_id = object::id_from_address(DEPOT_A_ADDR);
+            let sui_out = liquidity_pool::test_sell(&mut corridor, su_id, 50, 0, scenario.ctx());
+            coin::burn_for_testing(sui_out);
+            ts::return_shared(corridor);
+        };
+        i = i + 1;
+    };
+
+    scenario.next_tx(TRADER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let (swaps, _sui_vol, _item_vol, fees) = liquidity_pool::get_pool_stats(&corridor, su_id);
+        assert!(swaps == 3);
+        // Note: test helpers don't update sui_volume/item_volume (only real sell/buy do)
+        assert!(fees > 0);
+
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_remove_all_liquidity() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let sui = coin::mint_for_testing<SUI>(5_000_000_000, scenario.ctx());
+        liquidity_pool::create_pool(&mut corridor, &owner_cap, su_id, ITEM_TYPE, 30, sui, 500);
+
+        // Remove ALL liquidity
+        liquidity_pool::remove_liquidity(
+            &mut corridor, &owner_cap, su_id,
+            5_000_000_000,
+            500,
+            scenario.ctx(),
+        );
+
+        let (r_sui, r_items) = liquidity_pool::get_reserves(&corridor, su_id);
+        assert!(r_sui == 0);
+        assert!(r_items == 0);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
