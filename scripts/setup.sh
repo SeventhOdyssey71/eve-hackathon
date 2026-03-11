@@ -35,5 +35,5 @@ fi
 echo ""
 echo "=== Setup complete ==="
 echo ""
-echo "Build FEN:  cd fen && sui move build"
-echo "Test FEN:   cd fen && sui move test"
+echo "Build FEN:  cd contracts/fen && sui move build"
+echo "Test FEN:   cd contracts/fen && sui move test"

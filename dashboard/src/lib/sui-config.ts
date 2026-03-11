@@ -3,7 +3,6 @@ import { createNetworkConfig } from "@mysten/dapp-kit";
 // Deployed FEN contract addresses (Sui testnet)
 const FEN_PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0xb05f71abd959c6ffe9c5bb2a2bfb316d201f01dbca8c4508c59bb09efdc20f09";
 const CORRIDOR_REGISTRY_ID = process.env.NEXT_PUBLIC_CORRIDOR_REGISTRY_ID || "0xe01806aa7e0ebf3ea03140137b972b795f81059e654b53ee99c9711dc3ce1b2d";
-const FEN_CONFIG_ID = process.env.NEXT_PUBLIC_FEN_CONFIG_ID || "0x0";
 
 const { networkConfig, useNetworkVariable } = createNetworkConfig({
   testnet: {
@@ -12,7 +11,6 @@ const { networkConfig, useNetworkVariable } = createNetworkConfig({
     variables: {
       fenPackageId: FEN_PACKAGE_ID,
       corridorRegistryId: CORRIDOR_REGISTRY_ID,
-      fenConfigId: FEN_CONFIG_ID,
     },
   },
   devnet: {
@@ -21,7 +19,6 @@ const { networkConfig, useNetworkVariable } = createNetworkConfig({
     variables: {
       fenPackageId: FEN_PACKAGE_ID,
       corridorRegistryId: CORRIDOR_REGISTRY_ID,
-      fenConfigId: FEN_CONFIG_ID,
     },
   },
   mainnet: {
@@ -30,7 +27,6 @@ const { networkConfig, useNetworkVariable } = createNetworkConfig({
     variables: {
       fenPackageId: FEN_PACKAGE_ID,
       corridorRegistryId: CORRIDOR_REGISTRY_ID,
-      fenConfigId: FEN_CONFIG_ID,
     },
   },
 });
