@@ -8,7 +8,6 @@ import { formatSui, formatNumber, formatPercent } from "@/lib/utils";
 import {
   Repeat,
   ArrowDown,
-  TrendingUp,
   Droplets,
   Info,
   AlertTriangle,
@@ -54,29 +53,6 @@ export default function SwapPage() {
   const [selectedPoolIdx, setSelectedPoolIdx] = useState(0);
   const [inputAmount, setInputAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(100); // 1% default
-
-  // Gather all pools from active corridors
-  const activePools: PoolOption[] = useMemo(() => {
-    const pools: PoolOption[] = [];
-    for (const c of corridors) {
-      if (c.status !== "active") continue;
-      // We'll populate pool data in the component below via usePoolConfigs
-      // For now, store corridor info for the pool selector
-      pools.push({
-        corridorId: c.id,
-        corridorName: c.name,
-        storageUnitId: c.depotA.id,
-        pool: null as unknown as PoolConfig,
-      });
-      pools.push({
-        corridorId: c.id,
-        corridorName: c.name,
-        storageUnitId: c.depotB.id,
-        pool: null as unknown as PoolConfig,
-      });
-    }
-    return pools;
-  }, [corridors]);
 
   // Find the first active corridor for pool queries
   const firstActive = corridors.find((c) => c.status === "active");

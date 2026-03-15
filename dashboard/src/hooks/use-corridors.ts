@@ -700,7 +700,6 @@ export function useTradeRoutes(): {
         outputItem: c.depotA.outputItem.name || "Output",
         effectiveRate: c.depotA.ratioOut > 0 ? c.depotA.ratioIn / c.depotA.ratioOut : 1,
         tollCost: c.sourceGate.tollAmount / 1_000_000_000,
-        netProfit: 0,
         liquidity: c.depotA.outputStock,
       });
     }
@@ -714,7 +713,6 @@ export function useTradeRoutes(): {
         outputItem: c.depotB.outputItem.name || "Output",
         effectiveRate: c.depotB.ratioOut > 0 ? c.depotB.ratioIn / c.depotB.ratioOut : 1,
         tollCost: c.destGate.tollAmount / 1_000_000_000,
-        netProfit: 0,
         liquidity: c.depotB.outputStock,
       });
     }

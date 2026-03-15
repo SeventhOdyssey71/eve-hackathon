@@ -8,7 +8,7 @@ const client = new SuiJsonRpcClient({
   network: NETWORK,
   url: getJsonRpcFullnodeUrl(NETWORK),
 });
-const PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0xb05f71abd959c6ffe9c5bb2a2bfb316d201f01dbca8c4508c59bb09efdc20f09";
+const PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0x294fc90bf2c62a428ebed1a5e10406ef023b22a458881ef667b02af6e99d89af";
 
 export async function GET() {
   try {

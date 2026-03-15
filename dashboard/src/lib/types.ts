@@ -77,7 +77,6 @@ export interface TradeRoute {
   outputItem: string;
   effectiveRate: number;
   tollCost: number;
-  netProfit: number;
   liquidity: number;
 }
 

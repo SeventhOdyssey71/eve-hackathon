@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useTradeRoutes, useCorridors } from "@/hooks/use-corridors";
-import { formatNumber, formatSui, formatPercent } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft, Zap, Info } from "lucide-react";
 import Link from "next/link";
 import { useCurrentAccount } from "@mysten/dapp-kit";
