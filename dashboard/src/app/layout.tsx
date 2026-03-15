@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -35,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastProvider>
             <Sidebar />
             <div className="flex flex-col flex-1 overflow-hidden">
-              <Header />
+              <Suspense><Header /></Suspense>
               <main className="flex-1 overflow-y-auto p-4 md:p-8">
                 {children}
               </main>
