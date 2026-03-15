@@ -85,9 +85,12 @@ export default function OperatePage() {
   // Toast notifications
   const { txSuccess, txError } = useToast();
 
+  const refetchAll = () => setTimeout(() => { refetchCorridors(); refetchCaps(); }, 1500);
+
   useEffect(() => {
     if (regStatus === "success" && regDigest) {
       txSuccess("Corridor registered", regDigest);
+      refetchAll();
     } else if (regStatus === "error" && regError) {
       txError("Registration failed", regError);
     }
@@ -96,6 +99,7 @@ export default function OperatePage() {
   useEffect(() => {
     if (tollStatus === "success" && tollDigest) {
       txSuccess("Toll config updated", tollDigest);
+      refetchAll();
     } else if (tollStatus === "error" && tollError) {
       txError("Toll config failed", tollError);
     }
@@ -104,6 +108,7 @@ export default function OperatePage() {
   useEffect(() => {
     if (emStatus === "success" && emDigest) {
       txSuccess("Emergency control executed", emDigest);
+      refetchAll();
     } else if (emStatus === "error" && emError) {
       txError("Emergency control failed", emError);
     }
@@ -112,6 +117,7 @@ export default function OperatePage() {
   useEffect(() => {
     if (csStatus === "success" && csDigest) {
       txSuccess("Corridor status updated", csDigest);
+      refetchAll();
     } else if (csStatus === "error" && csError) {
       txError("Corridor status update failed", csError);
     }
@@ -128,6 +134,7 @@ export default function OperatePage() {
   useEffect(() => {
     if (depotStatus === "success" && depotDigest) {
       txSuccess("Depot config updated", depotDigest);
+      refetchAll();
     } else if (depotStatus === "error" && depotError) {
       txError("Depot config failed", depotError);
     }
@@ -136,13 +143,15 @@ export default function OperatePage() {
   useEffect(() => {
     if (poolStatus === "success" && poolDigest) {
       txSuccess("Pool operation completed", poolDigest);
+      // Refresh pool data after successful transaction
+      setTimeout(() => refetchPools(), 1500);
     } else if (poolStatus === "error" && poolError) {
       txError("Pool operation failed", poolError);
     }
   }, [poolStatus]);
 
   // Pool config from on-chain
-  const { poolA, poolB, isLoading: poolsLoading } = usePoolConfigs(
+  const { poolA, poolB, isLoading: poolsLoading, refetch: refetchPools } = usePoolConfigs(
     corridor?.id || "",
     corridor?.depotA.id || "",
     corridor?.depotB.id || "",

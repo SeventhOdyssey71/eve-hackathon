@@ -5,22 +5,17 @@ import { useTradeRoutes, useCorridors } from "@/hooks/use-corridors";
 import { formatNumber, formatSui, formatPercent } from "@/lib/utils";
 import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft, Zap, Info } from "lucide-react";
 import Link from "next/link";
-import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
-import { buildTollAndTrade } from "@/lib/transactions";
-import { useToast } from "@/components/ui/Toast";
 
 export default function TradePage() {
   const [sortBy, setSortBy] = useState<"rate" | "toll" | "fee">("rate");
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [quantity, setQuantity] = useState(100);
-  const [tradePending, setTradePending] = useState(false);
   const { routes } = useTradeRoutes();
   const { corridors } = useCorridors();
   const account = useCurrentAccount();
   const packageId = useNetworkVariable("fenPackageId");
-  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
-  const { txSuccess, txError } = useToast();
 
   const sorted = [...routes].sort((a, b) => {
     switch (sortBy) {
@@ -48,38 +43,13 @@ export default function TradePage() {
 
   const estimate = activeRoute ? calcOutput(activeRoute, quantity) : { output: 0, fee: 0, tollSui: 0 };
 
-  const handleTrade = useCallback(async () => {
+  const [showRequirements, setShowRequirements] = useState(false);
+
+  const handleTrade = useCallback(() => {
     if (!account || !activeRoute || quantity <= 0) return;
-    setTradePending(true);
-    try {
-      const tx = buildTollAndTrade({
-        packageId,
-        corridorId: activeRoute.corridorId,
-        sourceGateId: "", // Requires EVE Frontier Gate object
-        destGateId: "",   // Requires EVE Frontier Gate object
-        characterId: "",  // Requires EVE Frontier Character object
-        tollAmount: Math.floor(activeRoute.tollCost * 1_000_000_000),
-        storageUnitId: "", // Requires EVE Frontier SSU object
-        inputItemId: "",   // Requires EVE Frontier Item object
-      });
-      signAndExecute(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            txSuccess("Trade executed successfully", result.digest);
-          },
-          onError: (err) => {
-            txError("Trade failed", err.message);
-          },
-          onSettled: () => setTradePending(false),
-        }
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Trade failed";
-      txError("Trade failed", message);
-      setTradePending(false);
-    }
-  }, [account, activeRoute, quantity, packageId, signAndExecute, txSuccess, txError]);
+    // Show requirements dialog — actual execution requires EVE Frontier game objects
+    setShowRequirements(true);
+  }, [account, activeRoute, quantity]);
 
   // Count active vs total corridors for the header stat
   const activeCorrCount = corridors.filter((c) => c.status === "active").length;
@@ -297,17 +267,14 @@ export default function TradePage() {
                 <div className="flex gap-3">
                   <button
                     className="btn-primary flex-1"
-                    disabled={!account || quantity <= 0 || tradePending}
+                    disabled={!account || quantity <= 0}
                     onClick={handleTrade}
-                    title={account ? "Requires an EVE Frontier Character, Gate, and Item objects on Sui Testnet" : undefined}
                   >
                     {!account
                       ? "Connect Wallet to Trade"
-                      : tradePending
-                        ? "Confirming..."
-                        : quantity <= 0
-                          ? "Enter Quantity"
-                          : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
+                      : quantity <= 0
+                        ? "Enter Quantity"
+                        : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
                   </button>
                   <Link
                     href={`/corridors/${activeRoute.corridorId}`}
@@ -332,6 +299,36 @@ export default function TradePage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Requirements dialog */}
+      {showRequirements && activeRoute && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowRequirements(false)}>
+          <div className="card p-6 max-w-md mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-eve-text">Trade Transaction Preview</h3>
+            <p className="text-sm text-eve-text-dim">
+              This trade chains <code className="text-eve-orange text-xs">toll_gate::pay_toll_and_jump</code> + <code className="text-eve-orange text-xs">depot::execute_trade</code> in a single PTB and requires:
+            </p>
+            <div className="bg-eve-bg rounded-xl p-4 space-y-2 text-xs font-mono">
+              <div><span className="text-eve-muted">package:</span> <span className="text-eve-text">{packageId.slice(0, 16)}...</span></div>
+              <div><span className="text-eve-muted">corridor:</span> <span className="text-eve-text">{activeRoute.corridorId.slice(0, 16)}...</span></div>
+              <div><span className="text-eve-muted">toll:</span> <span className="text-eve-text">{activeRoute.tollCost} SUI</span></div>
+              <div><span className="text-eve-muted">input:</span> <span className="text-eve-text">{quantity} {activeRoute.inputItem}</span></div>
+              <div><span className="text-eve-muted">output:</span> <span className="text-eve-orange">{estimate.output} {activeRoute.outputItem}</span></div>
+              <div className="border-t border-eve-border/40 pt-2 mt-2">
+                <div><span className="text-eve-muted">source_gate:</span> <span className="text-eve-yellow">required (EVE Frontier Gate)</span></div>
+                <div><span className="text-eve-muted">dest_gate:</span> <span className="text-eve-yellow">required (EVE Frontier Gate)</span></div>
+                <div><span className="text-eve-muted">character:</span> <span className="text-eve-yellow">required (Character NFT)</span></div>
+                <div><span className="text-eve-muted">storage_unit:</span> <span className="text-eve-yellow">required (SSU object)</span></div>
+                <div><span className="text-eve-muted">input_item:</span> <span className="text-eve-yellow">required (in-game Item)</span></div>
+              </div>
+            </div>
+            <p className="text-xs text-eve-muted">
+              These objects are created within the EVE Frontier game world. Connect with an EVE Frontier wallet that holds these objects to execute trades.
+            </p>
+            <button className="btn-secondary w-full" onClick={() => setShowRequirements(false)}>Close</button>
+          </div>
+        </div>
       )}
     </div>
   );

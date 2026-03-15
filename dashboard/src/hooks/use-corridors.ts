@@ -275,8 +275,9 @@ async function fetchTollConfig(
     });
     if (result.data?.content && "fields" in result.data.content) {
       const outer = result.data.content.fields as Record<string, unknown>;
-      // Dynamic field objects have { name, value } structure
-      const value = (outer.value ?? outer) as Record<string, unknown>;
+      // Dynamic field: outer.value can be { type, fields } or a flat object
+      const raw = (outer.value ?? outer) as Record<string, unknown>;
+      const value = (raw.fields ?? raw) as Record<string, unknown>;
       return {
         toll_amount: value.toll_amount as string | number,
         surge_active: Boolean(value.surge_active),
@@ -305,7 +306,9 @@ async function fetchDepotConfig(
     });
     if (result.data?.content && "fields" in result.data.content) {
       const outer = result.data.content.fields as Record<string, unknown>;
-      const value = (outer.value ?? outer) as Record<string, unknown>;
+      // Dynamic field: outer.value can be { type, fields } or a flat object
+      const raw = (outer.value ?? outer) as Record<string, unknown>;
+      const value = (raw.fields ?? raw) as Record<string, unknown>;
       return {
         input_type_id: value.input_type_id as string | number,
         output_type_id: value.output_type_id as string | number,
@@ -352,8 +355,10 @@ async function fetchPoolConfig(
     });
     if (result.data?.content && "fields" in result.data.content) {
       const outer = result.data.content.fields as Record<string, unknown>;
-      const value = (outer.value ?? outer) as Record<string, unknown>;
-      // reserve_sui is a Balance<SUI> — stored as { value: string }
+      // Dynamic field: outer.value can be { type, fields } or a flat object
+      const raw = (outer.value ?? outer) as Record<string, unknown>;
+      const value = (raw.fields ?? raw) as Record<string, unknown>;
+      // reserve_sui is a Balance<SUI> — stored as string or { value: string }
       let reserveSui = 0;
       if (value.reserve_sui && typeof value.reserve_sui === "object") {
         reserveSui = Number((value.reserve_sui as Record<string, unknown>).value || 0);
@@ -362,15 +367,15 @@ async function fetchPoolConfig(
       }
       return {
         storageUnitId,
-        itemTypeId: Number(value.item_type_id),
+        itemTypeId: Number(value.item_type_id || 0),
         reserveSui,
-        reserveItems: Number(value.reserve_items),
-        feeBps: Number(value.fee_bps),
+        reserveItems: Number(value.reserve_items || 0),
+        feeBps: Number(value.fee_bps || 0),
         isActive: Boolean(value.is_active),
-        totalSwaps: Number(value.total_swaps),
-        totalSuiVolume: Number(value.total_sui_volume),
-        totalItemVolume: Number(value.total_item_volume),
-        totalFeesCollected: Number(value.total_fees_collected),
+        totalSwaps: Number(value.total_swaps || 0),
+        totalSuiVolume: Number(value.total_sui_volume || 0),
+        totalItemVolume: Number(value.total_item_volume || 0),
+        totalFeesCollected: Number(value.total_fees_collected || 0),
       };
     }
   } catch {
@@ -383,12 +388,14 @@ export function usePoolConfigs(corridorId: string, depotAId: string, depotBId: s
   poolA: PoolConfig | null;
   poolB: PoolConfig | null;
   isLoading: boolean;
+  refetch: () => void;
 } {
   const packageId = useNetworkVariable("fenPackageId");
   const client = useSuiClient();
   const [poolA, setPoolA] = useState<PoolConfig | null>(null);
   const [poolB, setPoolB] = useState<PoolConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!corridorId || packageId === "0x0") {
@@ -397,6 +404,7 @@ export function usePoolConfigs(corridorId: string, depotAId: string, depotBId: s
     }
 
     let cancelled = false;
+    setIsLoading(true);
 
     async function load() {
       const [a, b] = await Promise.all([
@@ -412,9 +420,11 @@ export function usePoolConfigs(corridorId: string, depotAId: string, depotBId: s
 
     load();
     return () => { cancelled = true; };
-  }, [corridorId, depotAId, depotBId, client, packageId]);
+  }, [corridorId, depotAId, depotBId, client, packageId, tick]);
 
-  return { poolA, poolB, isLoading };
+  const refetch = () => setTick((t) => t + 1);
+
+  return { poolA, poolB, isLoading, refetch };
 }
 
 export function useCorridor(id: string): {

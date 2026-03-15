@@ -2,11 +2,9 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useCorridors, usePoolConfigs } from "@/hooks/use-corridors";
-import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
 import { formatSui, formatNumber, formatPercent } from "@/lib/utils";
-import { buildBuyItems, buildSellItems } from "@/lib/transactions";
-import { useToast } from "@/components/ui/Toast";
 import {
   Repeat,
   ArrowDown,
@@ -52,14 +50,10 @@ export default function SwapPage() {
   const account = useCurrentAccount();
   const packageId = useNetworkVariable("fenPackageId");
   const { corridors, isLoading } = useCorridors();
-  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
-
   const [direction, setDirection] = useState<"buy" | "sell">("sell");
   const [selectedPoolIdx, setSelectedPoolIdx] = useState(0);
   const [inputAmount, setInputAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(100); // 1% default
-  const [swapPending, setSwapPending] = useState(false);
-  const { txSuccess, txError } = useToast();
 
   // Gather all pools from active corridors
   const activePools: PoolOption[] = useMemo(() => {
@@ -151,52 +145,13 @@ export default function SwapPage() {
       : 0
     : 0;
 
+  const [showRequirements, setShowRequirements] = useState(false);
+
   const handleSwap = useCallback(() => {
     if (!account || !selected || !pool || parsedInput <= 0) return;
-    setSwapPending(true);
-    try {
-      let tx;
-      if (direction === "sell") {
-        tx = buildSellItems({
-          packageId,
-          corridorId: selected.corridorId,
-          storageUnitId: selected.storageUnitId,
-          characterId: "", // Requires EVE Frontier Character object
-          inputItemId: "", // Requires EVE Frontier Item object
-          minSuiOut: minOutput,
-        });
-      } else {
-        tx = buildBuyItems({
-          packageId,
-          corridorId: selected.corridorId,
-          storageUnitId: selected.storageUnitId,
-          characterId: "", // Requires EVE Frontier Character object
-          suiAmount: Math.floor(parsedInput * 1_000_000_000),
-          minItemsOut: minOutput,
-        });
-      }
-      signAndExecute(
-        { transaction: tx },
-        {
-          onSuccess: (result) => {
-            txSuccess(
-              direction === "sell" ? "Items sold successfully" : "Items purchased successfully",
-              result.digest
-            );
-            setInputAmount("");
-          },
-          onError: (err) => {
-            txError("Swap failed", err.message);
-          },
-          onSettled: () => setSwapPending(false),
-        }
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Swap failed";
-      txError("Swap failed", message);
-      setSwapPending(false);
-    }
-  }, [account, selected, pool, parsedInput, direction, minOutput, packageId, signAndExecute, txSuccess, txError]);
+    // Show requirements dialog — actual execution requires EVE Frontier game objects
+    setShowRequirements(true);
+  }, [account, selected, pool, parsedInput]);
 
   return (
     <div className="space-y-8 max-w-[1400px]">
@@ -397,21 +352,18 @@ export default function SwapPage() {
               {/* Swap button */}
               <button
                 className="btn-primary w-full mt-5"
-                disabled={!account || parsedInput <= 0 || estimate.output <= 0 || swapPending}
+                disabled={!account || parsedInput <= 0 || estimate.output <= 0}
                 onClick={handleSwap}
-                title={account ? "Requires an EVE Frontier Character and Item objects on Sui Testnet" : undefined}
               >
                 {!account
                   ? "Connect Wallet to Swap"
-                  : swapPending
-                    ? "Confirming..."
-                    : parsedInput <= 0
-                      ? "Enter Amount"
-                      : estimate.output <= 0
-                        ? "Insufficient Liquidity"
-                        : direction === "sell"
-                          ? `Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
-                          : `Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`}
+                  : parsedInput <= 0
+                    ? "Enter Amount"
+                    : estimate.output <= 0
+                      ? "Insufficient Liquidity"
+                      : direction === "sell"
+                        ? `Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
+                        : `Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`}
               </button>
 
               {account && parsedInput > 0 && (
@@ -522,6 +474,39 @@ export default function SwapPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Requirements dialog */}
+      {showRequirements && selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowRequirements(false)}>
+          <div className="card p-6 max-w-md mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-eve-text">Swap Transaction Preview</h3>
+            <p className="text-sm text-eve-text-dim">
+              This swap calls <code className="text-eve-orange text-xs">{direction === "sell" ? "liquidity_pool::sell_items" : "liquidity_pool::buy_items"}</code> on-chain and requires the following EVE Frontier objects:
+            </p>
+            <div className="bg-eve-bg rounded-xl p-4 space-y-2 text-xs font-mono">
+              <div><span className="text-eve-muted">package:</span> <span className="text-eve-text">{packageId.slice(0, 16)}...</span></div>
+              <div><span className="text-eve-muted">corridor:</span> <span className="text-eve-text">{selected.corridorId.slice(0, 16)}...</span></div>
+              <div><span className="text-eve-muted">storage_unit:</span> <span className="text-eve-text">{selected.storageUnitId.slice(0, 16)}...</span></div>
+              <div><span className="text-eve-muted">character:</span> <span className="text-eve-yellow">required (EVE Frontier Character NFT)</span></div>
+              {direction === "sell" ? (
+                <>
+                  <div><span className="text-eve-muted">input_item:</span> <span className="text-eve-yellow">required (in-game Item object)</span></div>
+                  <div><span className="text-eve-muted">min_sui_out:</span> <span className="text-eve-text">{minOutput} MIST</span></div>
+                </>
+              ) : (
+                <>
+                  <div><span className="text-eve-muted">sui_amount:</span> <span className="text-eve-text">{Math.floor(parsedInput * 1_000_000_000)} MIST</span></div>
+                  <div><span className="text-eve-muted">min_items_out:</span> <span className="text-eve-text">{minOutput}</span></div>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-eve-muted">
+              Character and Item objects are created within the EVE Frontier game world. Connect with an EVE Frontier wallet that holds these objects to execute swaps.
+            </p>
+            <button className="btn-secondary w-full" onClick={() => setShowRequirements(false)}>Close</button>
           </div>
         </div>
       )}
