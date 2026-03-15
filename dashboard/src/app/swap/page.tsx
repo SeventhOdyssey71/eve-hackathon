@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useCorridors, usePoolConfigs } from "@/hooks/use-corridors";
-import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
 import { formatSui, formatNumber, formatPercent } from "@/lib/utils";
 import { buildBuyItems, buildSellItems } from "@/lib/transactions";
+import { useToast } from "@/components/ui/Toast";
 import {
   Repeat,
   ArrowDown,
@@ -57,6 +58,8 @@ export default function SwapPage() {
   const [selectedPoolIdx, setSelectedPoolIdx] = useState(0);
   const [inputAmount, setInputAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(100); // 1% default
+  const [swapPending, setSwapPending] = useState(false);
+  const { txSuccess, txError } = useToast();
 
   // Gather all pools from active corridors
   const activePools: PoolOption[] = useMemo(() => {
@@ -147,6 +150,53 @@ export default function SwapPage() {
       ? pool.reserveSui / pool.reserveItems / 1_000_000_000
       : 0
     : 0;
+
+  const handleSwap = useCallback(() => {
+    if (!account || !selected || !pool || parsedInput <= 0) return;
+    setSwapPending(true);
+    try {
+      let tx;
+      if (direction === "sell") {
+        tx = buildSellItems({
+          packageId,
+          corridorId: selected.corridorId,
+          storageUnitId: selected.storageUnitId,
+          characterId: "", // Requires EVE Frontier Character object
+          inputItemId: "", // Requires EVE Frontier Item object
+          minSuiOut: minOutput,
+        });
+      } else {
+        tx = buildBuyItems({
+          packageId,
+          corridorId: selected.corridorId,
+          storageUnitId: selected.storageUnitId,
+          characterId: "", // Requires EVE Frontier Character object
+          suiAmount: Math.floor(parsedInput * 1_000_000_000),
+          minItemsOut: minOutput,
+        });
+      }
+      signAndExecute(
+        { transaction: tx },
+        {
+          onSuccess: (result) => {
+            txSuccess(
+              direction === "sell" ? "Items sold successfully" : "Items purchased successfully",
+              result.digest
+            );
+            setInputAmount("");
+          },
+          onError: (err) => {
+            txError("Swap failed", err.message);
+          },
+          onSettled: () => setSwapPending(false),
+        }
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Swap failed";
+      txError("Swap failed", message);
+      setSwapPending(false);
+    }
+  }, [account, selected, pool, parsedInput, direction, minOutput, packageId, signAndExecute, txSuccess, txError]);
 
   return (
     <div className="space-y-8 max-w-[1400px]">
@@ -347,17 +397,21 @@ export default function SwapPage() {
               {/* Swap button */}
               <button
                 className="btn-primary w-full mt-5"
-                disabled={!account || parsedInput <= 0 || estimate.output <= 0}
+                disabled={!account || parsedInput <= 0 || estimate.output <= 0 || swapPending}
+                onClick={handleSwap}
+                title={account ? "Requires an EVE Frontier Character and Item objects on Sui Testnet" : undefined}
               >
                 {!account
                   ? "Connect Wallet to Swap"
-                  : parsedInput <= 0
-                    ? "Enter Amount"
-                    : estimate.output <= 0
-                      ? "Insufficient Liquidity"
-                      : direction === "sell"
-                        ? `Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
-                        : `Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`}
+                  : swapPending
+                    ? "Confirming..."
+                    : parsedInput <= 0
+                      ? "Enter Amount"
+                      : estimate.output <= 0
+                        ? "Insufficient Liquidity"
+                        : direction === "sell"
+                          ? `Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
+                          : `Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`}
               </button>
 
               {account && parsedInput > 0 && (
@@ -365,6 +419,9 @@ export default function SwapPage() {
                   {direction === "sell"
                     ? "Items will be deposited into the pool's SSU. SUI will be transferred to your wallet."
                     : "SUI will be deposited into the pool. Items will be withdrawn from the SSU to your wallet."}
+                  <span className="block mt-1 text-eve-yellow/70">
+                    Requires an EVE Frontier Character and Item objects in your wallet.
+                  </span>
                 </p>
               )}
             </div>

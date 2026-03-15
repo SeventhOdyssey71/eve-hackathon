@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 
-const client = new SuiJsonRpcClient({ network: "testnet", url: getJsonRpcFullnodeUrl("testnet") });
+const NETWORK =
+  (process.env.NEXT_PUBLIC_SUI_NETWORK as "testnet" | "devnet" | "mainnet") ||
+  "testnet";
+const client = new SuiJsonRpcClient({
+  network: NETWORK,
+  url: getJsonRpcFullnodeUrl(NETWORK),
+});
 const PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0xb05f71abd959c6ffe9c5bb2a2bfb316d201f01dbca8c4508c59bb09efdc20f09";
 
 const EVENT_TYPES = [

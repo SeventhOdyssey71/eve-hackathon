@@ -3,6 +3,7 @@
 import { createContext, useContext, useCallback, useState, useEffect } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { explorerUrl } from "@/lib/utils";
 
 type ToastType = "success" | "error" | "warning" | "info";
 
@@ -52,9 +53,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     return () => clearTimeout(timer);
   }, [toast.duration, onDismiss]);
 
-  const explorerUrl = toast.txDigest
-    ? `https://suiscan.xyz/testnet/tx/${toast.txDigest}`
-    : null;
+  const txExplorerUrl = toast.txDigest ? explorerUrl("tx", toast.txDigest) : null;
 
   return (
     <div
@@ -69,9 +68,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         {toast.description && (
           <div className="text-xs text-eve-text-dim mt-0.5 truncate">{toast.description}</div>
         )}
-        {explorerUrl && (
+        {txExplorerUrl && (
           <a
-            href={explorerUrl}
+            href={txExplorerUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-eve-orange hover:text-eve-orange-light mt-1 transition-colors"

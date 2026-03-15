@@ -669,6 +669,56 @@ export function buildBuyItems({
   return tx;
 }
 
+// --- Composite: Toll + Trade in a single PTB ---
+
+export function buildTollAndTrade({
+  packageId,
+  corridorId,
+  sourceGateId,
+  destGateId,
+  characterId,
+  tollAmount,
+  storageUnitId,
+  inputItemId,
+}: {
+  packageId: string;
+  corridorId: string;
+  sourceGateId: string;
+  destGateId: string;
+  characterId: string;
+  tollAmount: number;
+  storageUnitId: string;
+  inputItemId: string;
+}) {
+  const tx = new Transaction();
+  // Step 1: Split toll payment from gas
+  const [tollCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(tollAmount)]);
+  // Step 2: Pay toll and jump
+  tx.moveCall({
+    target: `${packageId}::toll_gate::pay_toll_and_jump`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(sourceGateId),
+      tx.object(destGateId),
+      tx.object(characterId),
+      tollCoin,
+      tx.object("0x6"), // Clock
+    ],
+  });
+  // Step 3: Execute trade at depot
+  tx.moveCall({
+    target: `${packageId}::depot::execute_trade`,
+    arguments: [
+      tx.object(corridorId),
+      tx.object(storageUnitId),
+      tx.object(characterId),
+      tx.object(inputItemId),
+      tx.object("0x6"), // Clock
+    ],
+  });
+  return tx;
+}
+
 // --- DeepBook Adapter Operations ---
 
 // Move: fen::deepbook_adapter::link_balance_manager(registry, owner_cap, corridor_id, balance_manager_id, operator, ctx)

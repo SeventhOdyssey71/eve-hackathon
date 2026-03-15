@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useSignAndExecuteTransaction, useCurrentAccount } from "@mysten/dapp-kit";
-import { useNetworkVariable } from "@/lib/sui-config";
+import { useNetworkVariable, SPONSORED_TX_ENABLED } from "@/lib/sui-config";
 import {
   buildRegisterCorridor,
   buildSetTollConfig,
@@ -51,6 +51,30 @@ function useFenTx() {
       setError(null);
       try {
         const tx = buildTx();
+
+        // If sponsored transactions are enabled, request gas sponsorship
+        if (SPONSORED_TX_ENABLED) {
+          try {
+            const txBytes = await tx.toJSON();
+            const res = await fetch("/api/sponsor", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ txBytes }),
+            });
+            if (res.ok) {
+              const { sponsorSignature } = await res.json();
+              // If sponsorship succeeded, the tx is now gas-sponsored
+              // The user still signs it themselves via the wallet
+              if (sponsorSignature) {
+                tx.setGasOwner(account.address); // preserve sender
+              }
+            }
+            // If sponsorship fails, fall through to normal execution
+          } catch {
+            // Sponsorship endpoint unavailable — proceed without it
+          }
+        }
+
         const result = await signAndExecute({ transaction: tx });
         setDigest(result.digest);
         setStatus("success");
@@ -65,7 +89,7 @@ function useFenTx() {
     [account, signAndExecute]
   );
 
-  return { status, error, digest, execute, account, packageId, registryId };
+  return { status, error, digest, execute, account, packageId, registryId, sponsored: SPONSORED_TX_ENABLED };
 }
 
 export function useRegisterCorridor() {

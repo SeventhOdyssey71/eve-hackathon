@@ -1,16 +1,9 @@
 # =============================================
-# Reference repos (cloned separately, not tracked)
+# External dependencies (cloned by scripts/setup.sh)
 # =============================================
 world-contracts/
-eve-explorer/
-builder-documentation/
-
-# =============================================
-# Legacy EVM repos (not used for this hackathon)
-# =============================================
-builder-examples/
-civ-toolkit/
-world-chain-contracts/
+evevault/
+evevault-extension/
 
 # =============================================
 # OS / Editor

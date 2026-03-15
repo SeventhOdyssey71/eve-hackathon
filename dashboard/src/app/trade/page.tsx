@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useTradeRoutes, useCorridors } from "@/hooks/use-corridors";
 import { formatNumber, formatSui, formatPercent } from "@/lib/utils";
 import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft, Zap, Info } from "lucide-react";
 import Link from "next/link";
-import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { useNetworkVariable } from "@/lib/sui-config";
+import { buildTollAndTrade } from "@/lib/transactions";
+import { useToast } from "@/components/ui/Toast";
 
 export default function TradePage() {
   const [sortBy, setSortBy] = useState<"rate" | "toll" | "fee">("rate");
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [quantity, setQuantity] = useState(100);
+  const [tradePending, setTradePending] = useState(false);
   const { routes } = useTradeRoutes();
   const { corridors } = useCorridors();
   const account = useCurrentAccount();
+  const packageId = useNetworkVariable("fenPackageId");
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+  const { txSuccess, txError } = useToast();
 
   const sorted = [...routes].sort((a, b) => {
     switch (sortBy) {
@@ -40,6 +47,39 @@ export default function TradePage() {
   };
 
   const estimate = activeRoute ? calcOutput(activeRoute, quantity) : { output: 0, fee: 0, tollSui: 0 };
+
+  const handleTrade = useCallback(async () => {
+    if (!account || !activeRoute || quantity <= 0) return;
+    setTradePending(true);
+    try {
+      const tx = buildTollAndTrade({
+        packageId,
+        corridorId: activeRoute.corridorId,
+        sourceGateId: "", // Requires EVE Frontier Gate object
+        destGateId: "",   // Requires EVE Frontier Gate object
+        characterId: "",  // Requires EVE Frontier Character object
+        tollAmount: Math.floor(activeRoute.tollCost * 1_000_000_000),
+        storageUnitId: "", // Requires EVE Frontier SSU object
+        inputItemId: "",   // Requires EVE Frontier Item object
+      });
+      signAndExecute(
+        { transaction: tx },
+        {
+          onSuccess: (result) => {
+            txSuccess("Trade executed successfully", result.digest);
+          },
+          onError: (err) => {
+            txError("Trade failed", err.message);
+          },
+          onSettled: () => setTradePending(false),
+        }
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Trade failed";
+      txError("Trade failed", message);
+      setTradePending(false);
+    }
+  }, [account, activeRoute, quantity, packageId, signAndExecute, txSuccess, txError]);
 
   // Count active vs total corridors for the header stat
   const activeCorrCount = corridors.filter((c) => c.status === "active").length;
@@ -257,13 +297,17 @@ export default function TradePage() {
                 <div className="flex gap-3">
                   <button
                     className="btn-primary flex-1"
-                    disabled={!account || quantity <= 0}
+                    disabled={!account || quantity <= 0 || tradePending}
+                    onClick={handleTrade}
+                    title={account ? "Requires an EVE Frontier Character, Gate, and Item objects on Sui Testnet" : undefined}
                   >
                     {!account
                       ? "Connect Wallet to Trade"
-                      : quantity <= 0
-                        ? "Enter Quantity"
-                        : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
+                      : tradePending
+                        ? "Confirming..."
+                        : quantity <= 0
+                          ? "Enter Quantity"
+                          : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
                   </button>
                   <Link
                     href={`/corridors/${activeRoute.corridorId}`}
@@ -277,6 +321,9 @@ export default function TradePage() {
                   <p className="text-[10px] text-eve-muted text-center">
                     This will submit a transaction to pay the toll and execute the trade in a single PTB.
                     You need SUI for the toll and the input items in your inventory.
+                    <span className="block mt-1 text-eve-yellow/70">
+                      Requires EVE Frontier Character, Gate, SSU, and Item objects in your wallet.
+                    </span>
                   </p>
                 )}
               </div>

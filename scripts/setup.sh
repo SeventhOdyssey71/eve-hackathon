@@ -1,6 +1,6 @@
 #!/bin/bash
 # FEN Development Setup
-# Clones required reference repos if not present.
+# Clones required dependencies if not present.
 
 set -e
 
@@ -16,24 +16,21 @@ else
     echo "world-contracts already present."
 fi
 
-# Clone builder-documentation (reference)
-if [ ! -d "$REPO_ROOT/builder-documentation" ]; then
-    echo "Cloning builder-documentation..."
-    git clone https://github.com/DionisisLougaris/builder-documentation.git "$REPO_ROOT/builder-documentation"
+# Clone evevault (EVE Frontier wallet — Chrome extension + web app)
+if [ ! -d "$REPO_ROOT/evevault" ]; then
+    echo "Cloning evevault..."
+    git clone https://github.com/evefrontier/evevault.git "$REPO_ROOT/evevault"
+    echo "Installing evevault dependencies..."
+    cd "$REPO_ROOT/evevault" && bun install
+    cd "$REPO_ROOT"
 else
-    echo "builder-documentation already present."
-fi
-
-# Clone eve-explorer (reference)
-if [ ! -d "$REPO_ROOT/eve-explorer" ]; then
-    echo "Cloning eve-explorer..."
-    git clone https://github.com/DionisisLougaris/eve-explorer.git "$REPO_ROOT/eve-explorer"
-else
-    echo "eve-explorer already present."
+    echo "evevault already present."
 fi
 
 echo ""
 echo "=== Setup complete ==="
 echo ""
-echo "Build FEN:  cd contracts/fen && sui move build"
-echo "Test FEN:   cd contracts/fen && sui move test"
+echo "Build FEN:       cd contracts/fen && sui move build"
+echo "Test FEN:        cd contracts/fen && sui move test"
+echo "Dev dashboard:   cd dashboard && pnpm dev"
+echo "Dev evevault:    cd evevault && bun run dev"

@@ -41,11 +41,12 @@ eve-hackathon/
 │   │   ├── liquidity_pool.move # Constant-product AMM: Items <-> SUI DEX
 │   │   └── deepbook_adapter.move # DeepBook v3 balance manager bridge
 │   └── tests/
-│       ├── corridor_tests.move       # 5 tests: register, activate, emergency, fee update
-│       ├── toll_gate_tests.move      # 15 tests: config, surge pricing, effective toll math
-│       ├── depot_tests.move          # 19 tests: config, activation, ratios, fees, status
-│       ├── treasury_tests.move       # 3 tests: create, deposit/withdraw, overflow
-│       └── liquidity_pool_tests.move # 36 tests: AMM math, pool lifecycle, swaps, liquidity
+│       ├── corridor_tests.move          # 15 tests: register, activate, emergency, fee update
+│       ├── toll_gate_tests.move         # 15 tests: config, surge pricing, effective toll math
+│       ├── depot_tests.move             # 19 tests: config, activation, ratios, fees, status
+│       ├── treasury_tests.move          # 8 tests: create, deposit/withdraw, overflow
+│       ├── liquidity_pool_tests.move    # 45 tests: AMM math, pool lifecycle, swaps, liquidity
+│       └── deepbook_adapter_tests.move  # 10 tests: link/unlink managers, order recording
 │
 ├── dashboard/                  # Next.js 15 operator dashboard
 │   └── src/
@@ -80,7 +81,7 @@ Built as a **world-contracts extension package** using the typed witness pattern
 ```bash
 cd contracts/fen
 sui move build
-sui move test    # 78 tests, all passing
+sui move test    # 116 tests, all passing
 ```
 
 ## Dashboard
@@ -116,9 +117,12 @@ pnpm dev
 Environment variables (defaults point to deployed testnet package):
 ```
 NEXT_PUBLIC_SUI_NETWORK=testnet
+NEXT_PUBLIC_EVE_TENANT=utopia
 NEXT_PUBLIC_FEN_PACKAGE_ID=0xb05f71abd959c6ffe9c5bb2a2bfb316d201f01dbca8c4508c59bb09efdc20f09
 NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0xe01806aa7e0ebf3ea03140137b972b795f81059e654b53ee99c9711dc3ce1b2d
 ```
+
+For external-browser usage, the official docs use tenant routing with query params such as `?tenant=utopia` or `?tenant=stillness`. The dashboard now defaults to `utopia` and preserves tenant selection in the header.
 
 ## How It Works
 

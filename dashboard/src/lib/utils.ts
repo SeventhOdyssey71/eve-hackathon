@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
+import { getConfiguredNetwork, type SuiNetwork } from "@/lib/sui-config";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -57,6 +58,12 @@ export function statusBg(status: string): string {
   }
 }
 
-export function explorerUrl(type: "tx" | "object" | "address", id: string): string {
-  return `https://suiscan.xyz/testnet/${type === "tx" ? "tx" : type === "object" ? "object" : "account"}/${id}`;
+export function explorerUrl(
+  type: "tx" | "object" | "address",
+  id: string,
+  network: SuiNetwork = getConfiguredNetwork(),
+): string {
+  const path =
+    type === "tx" ? "tx" : type === "object" ? "object" : "account";
+  return `https://suiscan.xyz/${network}/${path}/${id}`;
 }
