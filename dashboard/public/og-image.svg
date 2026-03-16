@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#08080d"/>
+  <rect x="40" y="40" width="1120" height="550" rx="24" fill="#101018" stroke="#232336" stroke-width="2"/>
+  <!-- Logo -->
+  <rect x="100" y="200" width="64" height="64" rx="14" fill="#d4600a" opacity="0.15"/>
+  <text x="132" y="243" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="32" fill="#d4600a">F</text>
+  <!-- Title -->
+  <text x="190" y="228" font-family="system-ui,sans-serif" font-weight="700" font-size="48" fill="#f1f5f9">FEN</text>
+  <text x="190" y="260" font-family="system-ui,sans-serif" font-weight="400" font-size="18" fill="#94a3b8">Frontier Exchange Network</text>
+  <!-- Subtitle -->
+  <text x="100" y="340" font-family="system-ui,sans-serif" font-weight="400" font-size="24" fill="#94a3b8">Player-owned trade corridors for EVE Frontier on Sui</text>
+  <!-- Features -->
+  <text x="100" y="410" font-family="system-ui,sans-serif" font-weight="600" font-size="18" fill="#d4600a">6 Move Modules</text>
+  <text x="100" y="440" font-family="system-ui,sans-serif" font-weight="400" font-size="16" fill="#64748b">Corridors · Tolls · Depots · Treasury · AMM Pools · DeepBook</text>
+  <text x="600" y="410" font-family="system-ui,sans-serif" font-weight="600" font-size="18" fill="#d4600a">116 Tests</text>
+  <text x="600" y="440" font-family="system-ui,sans-serif" font-weight="400" font-size="16" fill="#64748b">Comprehensive Move test coverage</text>
+  <!-- Diagram -->
+  <rect x="100" y="480" width="180" height="44" rx="8" fill="#181824" stroke="#232336" stroke-width="1"/>
+  <text x="190" y="508" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#f1f5f9">Source Gate</text>
+  <line x1="280" y1="502" x2="460" y2="502" stroke="#d4600a" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="370" y="492" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#d4600a">toll</text>
+  <rect x="460" y="480" width="180" height="44" rx="8" fill="#181824" stroke="#232336" stroke-width="1"/>
+  <text x="550" y="508" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#f1f5f9">Dest Gate</text>
+  <line x1="640" y1="502" x2="820" y2="502" stroke="#34d399" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="730" y="492" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#34d399">trade</text>
+  <rect x="820" y="480" width="180" height="44" rx="8" fill="#181824" stroke="#232336" stroke-width="1"/>
+  <text x="910" y="508" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#f1f5f9">AMM Pool</text>
+  <!-- Footer -->
+  <text x="1060" y="560" text-anchor="end" font-family="system-ui,sans-serif" font-weight="500" font-size="14" fill="#64748b">EVE Frontier x Sui 2026</text>
+</svg>

@@ -4,6 +4,7 @@ import { useSuiClientQuery, useSuiClient } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
 import { useState, useEffect, useMemo } from "react";
 import type { Corridor, DashboardStats, ActivityEvent, TradeRoute, PoolConfig } from "@/lib/types";
+import { getItemInfo } from "@/lib/items";
 
 const STATUS_MAP: Record<number, Corridor["status"]> = {
   0: "inactive",
@@ -19,16 +20,17 @@ function decodeNameBytes(raw: unknown): string {
 
 function parseCorridorObject(id: string, fields: Record<string, unknown>): Corridor {
   const statusNum = Number(fields.status ?? 0);
+  const corridorName = decodeNameBytes(fields.name);
   return {
     id,
-    name: decodeNameBytes(fields.name),
+    name: corridorName,
     status: STATUS_MAP[statusNum] || "inactive",
     owner: (fields.owner as string) || "",
     feeRecipient: (fields.fee_recipient as string) || "",
     sourceGate: {
       id: (fields.source_gate_id as string) || "",
-      name: "",
-      solarSystem: "",
+      name: `${corridorName} — Source Gate`,
+      solarSystem: `${corridorName} Origin`,
       tollAmount: 0,
       surgeActive: false,
       surgeMultiplier: 10000,
@@ -37,8 +39,8 @@ function parseCorridorObject(id: string, fields: Record<string, unknown>): Corri
     },
     destGate: {
       id: (fields.dest_gate_id as string) || "",
-      name: "",
-      solarSystem: "",
+      name: `${corridorName} — Dest Gate`,
+      solarSystem: `${corridorName} Destination`,
       tollAmount: 0,
       surgeActive: false,
       surgeMultiplier: 10000,
@@ -47,7 +49,7 @@ function parseCorridorObject(id: string, fields: Record<string, unknown>): Corri
     },
     depotA: {
       id: (fields.depot_a_id as string) || "",
-      name: "",
+      name: `${corridorName} — Depot A`,
       inputItem: { typeId: 0, name: "", icon: "" },
       outputItem: { typeId: 0, name: "", icon: "" },
       ratioIn: 1,
@@ -59,7 +61,7 @@ function parseCorridorObject(id: string, fields: Record<string, unknown>): Corri
     },
     depotB: {
       id: (fields.depot_b_id as string) || "",
-      name: "",
+      name: `${corridorName} — Depot B`,
       inputItem: { typeId: 0, name: "", icon: "" },
       outputItem: { typeId: 0, name: "", icon: "" },
       ratioIn: 1,
@@ -201,16 +203,10 @@ export function useCorridors(): {
               corridor.depotA.ratioOut = Number(depotConfig.ratio_out);
               corridor.depotA.feeBps = Number(depotConfig.fee_bps);
               corridor.depotA.isActive = depotConfig.is_active;
-              corridor.depotA.inputItem = {
-                typeId: Number(depotConfig.input_type_id),
-                name: `Item #${depotConfig.input_type_id}`,
-                icon: "",
-              };
-              corridor.depotA.outputItem = {
-                typeId: Number(depotConfig.output_type_id),
-                name: `Item #${depotConfig.output_type_id}`,
-                icon: "",
-              };
+              const inA = getItemInfo(Number(depotConfig.input_type_id));
+              corridor.depotA.inputItem = { typeId: Number(depotConfig.input_type_id), ...inA };
+              const outA = getItemInfo(Number(depotConfig.output_type_id));
+              corridor.depotA.outputItem = { typeId: Number(depotConfig.output_type_id), ...outA };
             }
           }
 
@@ -222,16 +218,10 @@ export function useCorridors(): {
               corridor.depotB.ratioOut = Number(depotConfig.ratio_out);
               corridor.depotB.feeBps = Number(depotConfig.fee_bps);
               corridor.depotB.isActive = depotConfig.is_active;
-              corridor.depotB.inputItem = {
-                typeId: Number(depotConfig.input_type_id),
-                name: `Item #${depotConfig.input_type_id}`,
-                icon: "",
-              };
-              corridor.depotB.outputItem = {
-                typeId: Number(depotConfig.output_type_id),
-                name: `Item #${depotConfig.output_type_id}`,
-                icon: "",
-              };
+              const inB = getItemInfo(Number(depotConfig.input_type_id));
+              corridor.depotB.inputItem = { typeId: Number(depotConfig.input_type_id), ...inB };
+              const outB = getItemInfo(Number(depotConfig.output_type_id));
+              corridor.depotB.outputItem = { typeId: Number(depotConfig.output_type_id), ...outB };
             }
           }
 
@@ -487,8 +477,10 @@ export function useCorridor(id: string): {
           c.depotA.ratioOut = Number(dc.ratio_out);
           c.depotA.feeBps = Number(dc.fee_bps);
           c.depotA.isActive = dc.is_active;
-          c.depotA.inputItem = { typeId: Number(dc.input_type_id), name: `Item #${dc.input_type_id}`, icon: "" };
-          c.depotA.outputItem = { typeId: Number(dc.output_type_id), name: `Item #${dc.output_type_id}`, icon: "" };
+          const inA2 = getItemInfo(Number(dc.input_type_id));
+          c.depotA.inputItem = { typeId: Number(dc.input_type_id), ...inA2 };
+          const outA2 = getItemInfo(Number(dc.output_type_id));
+          c.depotA.outputItem = { typeId: Number(dc.output_type_id), ...outA2 };
         }
       }
       if (c.depotB.id) {
@@ -498,8 +490,10 @@ export function useCorridor(id: string): {
           c.depotB.ratioOut = Number(dc.ratio_out);
           c.depotB.feeBps = Number(dc.fee_bps);
           c.depotB.isActive = dc.is_active;
-          c.depotB.inputItem = { typeId: Number(dc.input_type_id), name: `Item #${dc.input_type_id}`, icon: "" };
-          c.depotB.outputItem = { typeId: Number(dc.output_type_id), name: `Item #${dc.output_type_id}`, icon: "" };
+          const inB2 = getItemInfo(Number(dc.input_type_id));
+          c.depotB.inputItem = { typeId: Number(dc.input_type_id), ...inB2 };
+          const outB2 = getItemInfo(Number(dc.output_type_id));
+          c.depotB.outputItem = { typeId: Number(dc.output_type_id), ...outB2 };
         }
       }
 

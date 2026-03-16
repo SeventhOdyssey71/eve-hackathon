@@ -16,15 +16,20 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "FEN — Frontier Exchange Network",
   description: "Player-owned trade corridors for EVE Frontier on Sui. Register corridors, configure tolls, trade items, and swap via on-chain AMM pools.",
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
     title: "FEN — Frontier Exchange Network",
     description: "Player-owned trade corridors for EVE Frontier on Sui",
     type: "website",
+    images: [{ url: "/og-image.svg", width: 1200, height: 630, alt: "FEN — Frontier Exchange Network" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "FEN — Frontier Exchange Network",
     description: "Player-owned trade corridors for EVE Frontier on Sui",
+    images: ["/og-image.svg"],
   },
 };
 

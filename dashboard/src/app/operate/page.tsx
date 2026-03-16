@@ -15,6 +15,7 @@ import {
 } from "@/hooks/use-fen-transactions";
 import { usePoolConfigs } from "@/hooks/use-corridors";
 import { formatSui, formatPercent, statusBg, abbreviateAddress } from "@/lib/utils";
+import { getItemName } from "@/lib/items";
 import { AssemblyPicker } from "@/components/AssemblyPicker";
 import {
   Plus, Settings, Shield, AlertTriangle, DollarSign, Power,
@@ -677,7 +678,7 @@ export default function OperatePage() {
                             </div>
                           </div>
                           <div className="text-[10px] text-eve-muted mb-3">
-                            Item #{pool.itemTypeId} | Spot: {pool.reserveItems > 0
+                            {getItemName(pool.itemTypeId)} | Spot: {pool.reserveItems > 0
                               ? (pool.reserveSui / pool.reserveItems / 1_000_000_000).toFixed(4)
                               : "0"} SUI/item | Fees: {formatSui(pool.totalFeesCollected)}
                           </div>

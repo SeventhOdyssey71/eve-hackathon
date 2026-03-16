@@ -5,6 +5,7 @@ import { useCorridors, usePoolConfigs } from "@/hooks/use-corridors";
 import { useCurrentAccount } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
 import { formatSui, formatNumber, formatPercent } from "@/lib/utils";
+import { getItemName } from "@/lib/items";
 import {
   Repeat,
   ArrowDown,
@@ -200,7 +201,7 @@ export default function SwapPage() {
                 >
                   {realPools.map((p, i) => (
                     <option key={`${p.corridorId}-${p.storageUnitId}`} value={i}>
-                      {p.corridorName} -- Item #{p.pool.itemTypeId} (
+                      {p.corridorName} -- {getItemName(p.pool.itemTypeId)} (
                       {formatSui(p.pool.reserveSui)} / {formatNumber(p.pool.reserveItems)} items)
                     </option>
                   ))}
@@ -231,7 +232,7 @@ export default function SwapPage() {
                   />
                   <div className="text-xs text-eve-muted mt-1">
                     {direction === "sell"
-                      ? `Item #${pool?.itemTypeId || "?"}`
+                      ? getItemName(pool?.itemTypeId || 0)
                       : "SUI"}
                   </div>
                 </div>
@@ -265,7 +266,7 @@ export default function SwapPage() {
                   <div className="text-xs text-eve-muted mt-1">
                     {direction === "sell"
                       ? "SUI"
-                      : `Item #${pool?.itemTypeId || "?"}`}
+                      : getItemName(pool?.itemTypeId || 0)}
                     {minOutput > 0 && (
                       <span className="ml-2 text-eve-text-dim">
                         (min: {direction === "sell"
@@ -367,7 +368,7 @@ export default function SwapPage() {
                   <div>
                     <div className="text-xs text-eve-muted">Item Type</div>
                     <div className="text-sm font-medium text-eve-text mt-0.5">
-                      Item #{pool.itemTypeId}
+                      {getItemName(pool.itemTypeId)}
                     </div>
                   </div>
                   <div>
