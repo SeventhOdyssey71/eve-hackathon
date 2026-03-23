@@ -426,6 +426,7 @@ public fun buy_items(
         character,
         toll_gate::fen_auth(),
         item_type,
+        1,
         ctx,
     );
     transfer::public_transfer(output_item, ctx.sender());

@@ -41,3 +41,4 @@ dist/
 .turso/
 local.db
 local.db-*
+helper/

@@ -1,9 +1,8 @@
 [package]
 name = "fen"
-edition = "2024"
+edition = "2024.beta"
 
 [dependencies]
-World = { local = "../../world-contracts/contracts/world" }
+world = { local = "../../world-contracts/contracts/world" }
 
-[addresses]
-fen = "0x0"
+# [addresses] removed — new-style manifest uses [environments] or auto-resolution

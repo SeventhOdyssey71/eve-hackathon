@@ -8,7 +8,7 @@ const client = new SuiJsonRpcClient({
   network: NETWORK,
   url: getJsonRpcFullnodeUrl(NETWORK),
 });
-const PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0x294fc90bf2c62a428ebed1a5e10406ef023b22a458881ef667b02af6e99d89af";
+const PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a";
 
 const EVENT_TYPES = [
   "corridor::CorridorCreatedEvent",

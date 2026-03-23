@@ -236,6 +236,7 @@ public fun execute_trade(
         character,
         toll_gate::fen_auth(),
         output_type,
+        1,
         ctx,
     );
 

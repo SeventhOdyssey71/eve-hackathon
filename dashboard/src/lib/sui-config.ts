@@ -3,10 +3,10 @@ import { createNetworkConfig } from "@mysten/dapp-kit";
 // Deployed FEN contract addresses (Sui testnet)
 const FEN_PACKAGE_ID =
   process.env.NEXT_PUBLIC_FEN_PACKAGE_ID ||
-  "0x294fc90bf2c62a428ebed1a5e10406ef023b22a458881ef667b02af6e99d89af";
+  "0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a";
 const CORRIDOR_REGISTRY_ID =
   process.env.NEXT_PUBLIC_CORRIDOR_REGISTRY_ID ||
-  "0x8cef4d30d52630f224b1b0909de1c6238264ba7ecdffb827313ff30592de7687";
+  "0x2ec8e3f9be1952852fd6879005a580c705f25b57ad3077f9d369b355e807aa4c";
 
 const { networkConfig, useNetworkVariable } = createNetworkConfig({
   testnet: {

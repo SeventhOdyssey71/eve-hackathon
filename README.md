@@ -22,8 +22,8 @@ FEN turns isolated smart assemblies into a connected trade network. Operators li
 
 | Component | ID |
 |-----------|-----|
-| Package | `0x294fc90bf2c62a428ebed1a5e10406ef023b22a458881ef667b02af6e99d89af` |
-| CorridorRegistry | `0x8cef4d30d52630f224b1b0909de1c6238264ba7ecdffb827313ff30592de7687` |
+| Package | `0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a` |
+| CorridorRegistry | `0x2ec8e3f9be1952852fd6879005a580c705f25b57ad3077f9d369b355e807aa4c` |
 | BalanceManagerRegistry | `0x27d5587b2f07301e8e1694f00f06b6e0ebcc9274a9caa45180eb93b629852920` |
 
 See [DEPLOYMENT.md](contracts/fen/DEPLOYMENT.md) for all object IDs.
@@ -118,8 +118,8 @@ Environment variables (defaults point to deployed testnet package):
 ```
 NEXT_PUBLIC_SUI_NETWORK=testnet
 NEXT_PUBLIC_EVE_TENANT=utopia
-NEXT_PUBLIC_FEN_PACKAGE_ID=0x294fc90bf2c62a428ebed1a5e10406ef023b22a458881ef667b02af6e99d89af
-NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0x8cef4d30d52630f224b1b0909de1c6238264ba7ecdffb827313ff30592de7687
+NEXT_PUBLIC_FEN_PACKAGE_ID=0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a
+NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0x2ec8e3f9be1952852fd6879005a580c705f25b57ad3077f9d369b355e807aa4c
 ```
 
 For external-browser usage, the official docs use tenant routing with query params such as `?tenant=utopia` or `?tenant=stillness`. The dashboard now defaults to `utopia` and preserves tenant selection in the header.
