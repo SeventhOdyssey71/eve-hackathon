@@ -222,7 +222,7 @@ public fun get_effective_toll(corridor: &Corridor, gate_id: ID): u64 {
     };
     let config: &TollConfig = corridor::borrow_df(corridor, key);
     if (config.surge_active) {
-        (config.toll_amount * config.surge_numerator) / 10000
+        (((config.toll_amount as u128) * (config.surge_numerator as u128) / 10000) as u64)
     } else {
         config.toll_amount
     }
@@ -233,6 +233,7 @@ public fun toll_config_exists(corridor: &Corridor, gate_id: ID): bool {
 }
 
 /// Helper to get the FenAuth witness for authorizing gates.
-public fun fen_auth(): FenAuth {
+/// Package-private: only FEN modules can obtain this witness.
+public(package) fun fen_auth(): FenAuth {
     FenAuth {}
 }

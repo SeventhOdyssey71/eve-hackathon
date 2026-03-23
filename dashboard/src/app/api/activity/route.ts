@@ -125,7 +125,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch events", details: String(error) },
+      { error: "Failed to fetch events" },
       { status: 500 }
     );
   }

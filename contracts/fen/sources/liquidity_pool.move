@@ -421,12 +421,12 @@ public fun buy_items(
     config_mut.total_item_volume = config_mut.total_item_volume + items_out;
     config_mut.total_fees_collected = config_mut.total_fees_collected + fee;
 
-    // Withdraw items from SSU and send to trader
+    // Withdraw items from SSU and send to trader (quantity matches AMM output)
     let output_item = storage_unit.withdraw_item<toll_gate::FenAuth>(
         character,
         toll_gate::fen_auth(),
         item_type,
-        1,
+        (items_out as u32),
         ctx,
     );
     transfer::public_transfer(output_item, ctx.sender());

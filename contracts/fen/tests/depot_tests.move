@@ -340,17 +340,46 @@ fun test_fee_bps_max() {
         let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
         let depot_id = object::id_from_address(DEPOT_A);
 
-        // Large fee (100% = 10000 bps)
+        // Maximum allowed fee (50% = 5000 bps)
         depot::set_depot_config(
             &mut corridor,
             &owner_cap,
             depot_id,
             10, 20,
             1, 1,
-            10000,  // 100% fee
+            5000,  // 50% fee (max)
         );
 
-        assert!(depot::depot_fee_bps(&corridor, depot_id) == 10000);
+        assert!(depot::depot_fee_bps(&corridor, depot_id) == 5000);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+#[expected_failure(abort_code = depot::EFeeTooHigh)]
+fun test_fee_bps_exceeds_max() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let depot_id = object::id_from_address(DEPOT_A);
+
+        // Fee above max (5001 > 5000) should abort
+        depot::set_depot_config(
+            &mut corridor,
+            &owner_cap,
+            depot_id,
+            10, 20,
+            1, 1,
+            5001,
+        );
 
         ts::return_shared(corridor);
         scenario.return_to_sender(owner_cap);

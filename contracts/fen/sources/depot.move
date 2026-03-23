@@ -36,6 +36,12 @@ const EItemTypeMismatch: vector<u8> = b"Item type does not match depot input";
 const ERatioZero: vector<u8> = b"Exchange ratio cannot be zero";
 #[error(code = 6)]
 const EDepotInactive: vector<u8> = b"Depot is not active";
+#[error(code = 7)]
+const EFeeTooHigh: vector<u8> = b"Fee exceeds maximum (50%)";
+#[error(code = 8)]
+const EZeroOutput: vector<u8> = b"Trade output is zero";
+
+const MAX_FEE_BPS: u64 = 5000; // 50% max fee
 
 // === Dynamic Field Keys ===
 /// Per-depot exchange configuration, stored as a dynamic field on the Corridor.
@@ -108,6 +114,7 @@ public fun set_depot_config(
         EDepotMismatch,
     );
     assert!(ratio_in > 0 && ratio_out > 0, ERatioZero);
+    assert!(fee_bps <= MAX_FEE_BPS, EFeeTooHigh);
 
     let key = DepotConfigKey { storage_unit_id };
 
@@ -222,6 +229,7 @@ public fun execute_trade(
     let raw_output = ((input_qty as u64) * ratio_out) / ratio_in;
     let fee = (raw_output * fee_bps) / 10000;
     let net_output = raw_output - fee;
+    assert!(net_output > 0, EZeroOutput);
 
     // Deposit the input item into the storage unit via FenAuth extension
     storage_unit.deposit_item<toll_gate::FenAuth>(
@@ -231,12 +239,12 @@ public fun execute_trade(
         ctx,
     );
 
-    // Withdraw the output item from the storage unit
+    // Withdraw the output item from the storage unit (quantity matches computed output)
     let output_item = storage_unit.withdraw_item<toll_gate::FenAuth>(
         character,
         toll_gate::fen_auth(),
         output_type,
-        1,
+        (net_output as u32),
         ctx,
     );
 

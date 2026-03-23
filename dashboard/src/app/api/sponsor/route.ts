@@ -2,13 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 
+const FEN_PACKAGE_ID =
+  process.env.NEXT_PUBLIC_FEN_PACKAGE_ID ||
+  "0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a";
+
+const MAX_GAS_BUDGET = 50_000_000; // 0.05 SUI max sponsored gas
+
+// Simple in-memory rate limiter: max 10 requests per IP per minute
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > 10;
+}
+
 /**
  * Sponsored transaction endpoint.
- * Accepts a serialized TransactionKind, wraps it in a GasData-bearing transaction
- * signed by the server-side sponsor keypair, and returns the sponsor's signature.
- *
- * The client then combines their own signature with the sponsor signature
- * and submits the dual-signed transaction.
+ * Validates that the transaction only targets the FEN package,
+ * enforces a gas budget cap, and rate-limits requests.
  */
 export async function POST(request: NextRequest) {
   const sponsorKey = process.env.FEN_SPONSOR_PRIVATE_KEY;
@@ -16,6 +33,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Sponsored transactions not configured" },
       { status: 503 }
+    );
+  }
+
+  // Rate limiting
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (isRateLimited(clientIp)) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
     );
   }
 
@@ -28,18 +54,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Reconstruct the keypair from the base64-encoded secret key
+    // Deserialize and validate the transaction
+    const tx = Transaction.from(txBytes);
+    const txData = tx.getData();
+
+    // Validate all MoveCall targets are FEN package only
+    for (const command of txData.commands || []) {
+      if (command.MoveCall) {
+        const target = command.MoveCall.package;
+        if (target && target !== FEN_PACKAGE_ID) {
+          return NextResponse.json(
+            { error: "Only FEN package transactions can be sponsored" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Enforce gas budget cap
+    tx.setGasBudget(MAX_GAS_BUDGET);
+
     const keypair = Ed25519Keypair.fromSecretKey(sponsorKey);
     const sponsorAddress = keypair.getPublicKey().toSuiAddress();
 
-    // Deserialize the transaction the client built
-    const tx = Transaction.from(txBytes);
-
-    // Set the sponsor's gas payment
-    tx.setSender(tx.getData().sender || sponsorAddress);
+    tx.setSender(txData.sender || sponsorAddress);
     tx.setGasOwner(sponsorAddress);
 
-    // Build and sign as sponsor
     const { bytes, signature } = await tx.sign({ signer: keypair });
 
     return NextResponse.json({
@@ -47,8 +87,10 @@ export async function POST(request: NextRequest) {
       sponsorSignature: signature,
       sponsorAddress,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Sponsorship failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { error: "Sponsorship failed" },
+      { status: 500 }
+    );
   }
 }
