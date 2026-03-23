@@ -81,7 +81,7 @@ Built as a **world-contracts extension package** using the typed witness pattern
 ```bash
 cd contracts/fen
 sui move build
-sui move test    # 116 tests, all passing
+sui move test    # 117 tests, all passing
 ```
 
 ## Dashboard
