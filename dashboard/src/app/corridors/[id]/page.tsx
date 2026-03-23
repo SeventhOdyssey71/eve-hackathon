@@ -113,8 +113,8 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
                 Toll: {formatSui(corridor.sourceGate.tollAmount)}
               </div>
               {corridor.sourceGate.surgeActive && (
-                <div className="badge badge-surge mt-2 mx-auto">
-                  <Zap className="w-3 h-3" /> {corridor.sourceGate.surgeMultiplier / 100}%
+                <div className="mt-2 mx-auto inline-flex items-center gap-1 text-[10px] font-bold text-eve-yellow bg-eve-yellow/10 border border-eve-yellow/30 px-2 py-0.5 rounded-full animate-pulse">
+                  <Zap className="w-3 h-3" /> SURGE {corridor.sourceGate.surgeMultiplier / 100}x
                 </div>
               )}
             </div>
@@ -172,6 +172,11 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
               <div className="text-xs text-eve-orange font-medium mt-2">
                 Toll: {formatSui(corridor.destGate.tollAmount)}
               </div>
+              {corridor.destGate.surgeActive && (
+                <div className="mt-2 mx-auto inline-flex items-center gap-1 text-[10px] font-bold text-eve-yellow bg-eve-yellow/10 border border-eve-yellow/30 px-2 py-0.5 rounded-full animate-pulse">
+                  <Zap className="w-3 h-3" /> SURGE {corridor.destGate.surgeMultiplier / 100}x
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -191,6 +196,127 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
             <div className="stat-sub">{stat.sub}</div>
           </div>
         ))}
+      </div>
+
+      {/* Revenue Analytics */}
+      <div className="card p-5">
+        <h3 className="section-title mb-4 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-eve-orange" /> Revenue Breakdown
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Revenue split */}
+          <div>
+            <div className="stat-label mb-3">Revenue Sources</div>
+            <div className="space-y-2">
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-eve-text-dim">Toll Revenue</span>
+                  <span className="text-eve-text font-medium">{formatSui(corridor.totalTollRevenue)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-eve-elevated overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-eve-orange transition-all"
+                    style={{ width: `${totalRevenue > 0 ? (corridor.totalTollRevenue / totalRevenue) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="text-eve-text-dim">Trade Fees</span>
+                  <span className="text-eve-text font-medium">{formatSui(corridor.totalTradeRevenue)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-eve-elevated overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-eve-blue transition-all"
+                    style={{ width: `${totalRevenue > 0 ? (corridor.totalTradeRevenue / totalRevenue) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+              {(poolA || poolB) && (
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-eve-text-dim">AMM Pool Fees</span>
+                    <span className="text-eve-text font-medium">
+                      {formatSui((poolA?.totalFeesCollected || 0) + (poolB?.totalFeesCollected || 0))}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-eve-elevated overflow-hidden">
+                    <div className="h-full rounded-full bg-eve-green transition-all" style={{ width: "0%" }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Performance metrics */}
+          <div>
+            <div className="stat-label mb-3">Performance</div>
+            <div className="space-y-3">
+              <div className="flex justify-between text-xs">
+                <span className="text-eve-muted">Revenue / Day</span>
+                <span className="text-eve-orange font-semibold">
+                  {formatSui(
+                    Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000)) > 0
+                      ? totalRevenue / Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000))
+                      : 0
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-eve-muted">Avg Revenue / Jump</span>
+                <span className="text-eve-text font-medium">
+                  {corridor.totalJumps > 0 ? formatSui(corridor.totalTollRevenue / corridor.totalJumps) : "--"}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-eve-muted">Avg Revenue / Trade</span>
+                <span className="text-eve-text font-medium">
+                  {corridor.totalTrades > 0 ? formatSui(corridor.totalTradeRevenue / corridor.totalTrades) : "--"}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-eve-muted">Active Duration</span>
+                <span className="text-eve-text font-medium">
+                  {Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000))}d
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Gate economics */}
+          <div>
+            <div className="stat-label mb-3">Gate Economics</div>
+            <div className="space-y-3">
+              <div className="card-elevated p-3 rounded-lg">
+                <div className="text-xs text-eve-muted">Source Gate</div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-sm font-semibold text-eve-text">{formatSui(corridor.sourceGate.tollAmount)}</span>
+                  {corridor.sourceGate.surgeActive && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-eve-yellow bg-eve-yellow/10 px-2 py-0.5 rounded-full animate-pulse">
+                      <Zap className="w-3 h-3" /> SURGE {corridor.sourceGate.surgeMultiplier / 100}x
+                    </span>
+                  )}
+                </div>
+                {corridor.sourceGate.surgeActive && (
+                  <div className="text-[10px] text-eve-yellow mt-1">
+                    Effective: {formatSui(Math.floor(corridor.sourceGate.tollAmount * corridor.sourceGate.surgeMultiplier / 10000))}
+                  </div>
+                )}
+              </div>
+              <div className="card-elevated p-3 rounded-lg">
+                <div className="text-xs text-eve-muted">Dest Gate</div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-sm font-semibold text-eve-text">{formatSui(corridor.destGate.tollAmount)}</span>
+                  {corridor.destGate.surgeActive && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-eve-yellow bg-eve-yellow/10 px-2 py-0.5 rounded-full animate-pulse">
+                      <Zap className="w-3 h-3" /> SURGE {corridor.destGate.surgeMultiplier / 100}x
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* AMM Pools */}
