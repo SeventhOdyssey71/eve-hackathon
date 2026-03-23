@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Route, Settings, ArrowRightLeft, Zap, Repeat, Menu, X } from "lucide-react";
+import { LayoutDashboard, Route, Settings, ArrowRightLeft, Zap, Repeat, Menu, X, Activity, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { href: "/corridors", label: "Corridors", icon: Route },
   { href: "/trade", label: "Trade", icon: ArrowRightLeft },
   { href: "/swap", label: "AMM Swap", icon: Repeat },
+  { href: "/rankings", label: "Rankings", icon: Trophy },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/operate", label: "Operate", icon: Settings },
 ];
 
