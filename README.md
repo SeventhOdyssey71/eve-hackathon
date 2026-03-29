@@ -1,10 +1,16 @@
 # Frontier Exchange Network (FEN)
 
-> Player-owned trade corridors for EVE Frontier on Sui -- EVE Frontier x Sui 2026 Hackathon
+> Player-owned trade corridors for EVE Frontier on Sui
+
+**EVE Frontier x Sui 2026 Hackathon** | Theme: *A Toolkit for Civilization* | 6 Move modules | 117 tests | Deployed on Sui testnet
+
+**Categories**: Utility, Technical Implementation, Live Frontier Integration
 
 ## Overview
 
 FEN turns isolated smart assemblies into a connected trade network. Operators link two gates and two depots into a **corridor**, set toll prices and exchange rates, and earn revenue from every jump and trade. Traders discover the best routes and execute trades through the dashboard.
+
+FEN includes the **first on-chain AMM (automated market maker) for EVE Frontier items** -- constant-product (x*y=k) pools where items trade against SUI with dynamic pricing, slippage protection, and configurable fees.
 
 ```
   Source Gate ──────── Jump Link ──────── Dest Gate
@@ -24,7 +30,7 @@ FEN turns isolated smart assemblies into a connected trade network. Operators li
 |-----------|-----|
 | Package | `0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a` |
 | CorridorRegistry | `0x2ec8e3f9be1952852fd6879005a580c705f25b57ad3077f9d369b355e807aa4c` |
-| BalanceManagerRegistry | `0x27d5587b2f07301e8e1694f00f06b6e0ebcc9274a9caa45180eb93b629852920` |
+| BalanceManagerRegistry | `0x11e2fcfbada5497ce9f28b1b76b806bbdab1bbf9134ed06f00bd32f32647ea3b` |
 
 See [DEPLOYMENT.md](contracts/fen/DEPLOYMENT.md) for all object IDs.
 
@@ -189,10 +195,12 @@ This allows the corridor owner to update configs without redeploying, and any re
 
 **EVE Frontier x Sui 2026** -- "A Toolkit for Civilization"
 
-FEN is trade infrastructure that other mods build on top of. It directly addresses:
+FEN is trade infrastructure that other mods build on top of. It directly addresses open needs in the EVE Frontier ecosystem:
 
 - [world-contracts#44](https://github.com/evefrontier/world-contracts/issues/44) -- Extension-managed inventory (FEN depots manage SSU inventory via typed witness)
 - [world-contracts#45](https://github.com/evefrontier/world-contracts/issues/45) -- Deposit receipts for trustless trading (FEN treasury + events)
+
+### Why FEN Matters
 
 | Before FEN | With FEN |
 |-----------|----------|
@@ -202,6 +210,17 @@ FEN is trade infrastructure that other mods build on top of. It directly address
 | No revenue model for gate operators | Toll + trade fee + AMM fee revenue with treasury |
 | No visibility into exchange rates | Dashboard shows all rates, tolls, fees, and AMM prices |
 | Raw Sui object IDs to interact | Assembly auto-discovery from wallet |
+
+### What Ships
+
+| Component | Details |
+|-----------|---------|
+| Smart Contracts | 6 Move modules (corridor, toll_gate, depot, treasury, liquidity_pool, deepbook_adapter) |
+| Test Suite | 117 Move tests, all passing |
+| Dashboard | Next.js 15 with 8 routes: home, corridors, corridor detail, trade, swap, operate, activity, rankings |
+| Deployment | Sui testnet with live "Helios Express" corridor (tolls + depots + AMM pool configured) |
+| Wallet Integration | @mysten/dapp-kit with OwnerCap auto-discovery and assembly picker |
+| On-chain Data | Event-based corridor discovery, dynamic field reading for configs, real-time activity feed |
 
 ## License
 

@@ -23,13 +23,11 @@ export const metadata: Metadata = {
     title: "FEN — Frontier Exchange Network",
     description: "Player-owned trade corridors for EVE Frontier on Sui",
     type: "website",
-    images: [{ url: "/og-image.svg", width: 1200, height: 630, alt: "FEN — Frontier Exchange Network" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "FEN — Frontier Exchange Network",
     description: "Player-owned trade corridors for EVE Frontier on Sui",
-    images: ["/og-image.svg"],
   },
 };
 

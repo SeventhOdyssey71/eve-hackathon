@@ -70,16 +70,19 @@ export function SkeletonCorridorList() {
   );
 }
 
+// Deterministic heights to avoid SSR/client hydration mismatch
+const SKELETON_BAR_HEIGHTS = [45, 62, 38, 71, 53, 80, 35, 58, 67, 42, 74, 50];
+
 export function SkeletonChart() {
   return (
     <div className="card p-5">
       <Skeleton className="h-3 w-24 mb-5" />
       <div className="h-64 flex items-end gap-2 px-4">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {SKELETON_BAR_HEIGHTS.map((h, i) => (
           <div key={i} className="flex-1 flex flex-col gap-1">
             <Skeleton
               className="w-full rounded-t-sm"
-              style={{ height: `${20 + Math.random() * 60}%` }}
+              style={{ height: `${h}%` }}
             />
           </div>
         ))}

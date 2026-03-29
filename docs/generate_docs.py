@@ -1294,9 +1294,9 @@ def generate_doc_5():
     pdf.section_title("Testnet Deployment (March 10, 2026)", 2)
     pdf.body_text("The FEN package was deployed to Sui testnet with the following objects:")
     pdf.ln(3)
-    pdf.key_value("Package ID", "0xb05f71ab...dc20f09")
-    pdf.key_value("CorridorRegistry", "0xe01806aa...dc3ce1b2d")
-    pdf.key_value("BalanceManagerRegistry", "0x27d5587b...29852920")
+    pdf.key_value("Package ID", "0xff753421...f56620a")
+    pdf.key_value("CorridorRegistry", "0x2ec8e3f9...807aa4c")
+    pdf.key_value("BalanceManagerRegistry", "0x11e2fcfb...647ea3b")
     pdf.key_value("Deployer", "0x33a514d9...fb48eeb")
     pdf.key_value("TX Digest", "HSkM4yca7quv3R9DBY7Egyk...")
 
