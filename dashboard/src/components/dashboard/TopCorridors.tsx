@@ -15,56 +15,56 @@ export function TopCorridors({ corridors }: Props) {
 
   return (
     <div className="card overflow-hidden">
-      <div className="px-5 py-4 border-b border-eve-border">
+      <div className="px-6 py-5 border-b border-white/[0.04]">
         <h3 className="section-title">Top Corridors by Revenue</h3>
       </div>
       {sorted.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-12 h-12 rounded-xl bg-eve-elevated flex items-center justify-center mb-3">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4">
             <Route className="w-6 h-6 text-eve-muted" />
           </div>
-          <p className="text-sm text-eve-text-dim">No corridors registered</p>
-          <p className="text-xs text-eve-muted mt-1 mb-4">Register your first trade corridor to get started</p>
+          <p className="text-sm text-eve-text-dim font-medium">No corridors registered</p>
+          <p className="text-xs text-eve-muted mt-1.5 mb-5">Register your first trade corridor to get started</p>
           <Link href="/operate" className="btn-primary text-xs">Register Corridor</Link>
         </div>
       ) : (
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="border-b border-eve-border text-xs text-eve-text-faint uppercase tracking-wider">
-              <th className="text-left py-3 px-5 font-medium">Corridor</th>
-              <th className="text-left py-3 px-4 font-medium">Route</th>
-              <th className="text-left py-3 px-4 font-medium">Status</th>
-              <th className="text-right py-3 px-4 font-medium">Jumps</th>
-              <th className="text-right py-3 px-4 font-medium">Trades</th>
-              <th className="text-right py-3 px-5 font-medium">Revenue</th>
+            <tr className="border-b border-white/[0.04] text-[11px] text-eve-muted uppercase tracking-widest">
+              <th className="text-left py-3.5 px-6 font-medium">Corridor</th>
+              <th className="text-left py-3.5 px-4 font-medium">Route</th>
+              <th className="text-left py-3.5 px-4 font-medium">Status</th>
+              <th className="text-right py-3.5 px-4 font-medium">Jumps</th>
+              <th className="text-right py-3.5 px-4 font-medium">Trades</th>
+              <th className="text-right py-3.5 px-6 font-medium">Revenue</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((c) => (
               <tr
                 key={c.id}
-                className="border-b border-eve-border/40 hover:bg-eve-elevated/40 transition-colors"
+                className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
               >
-                <td className="py-3 px-5">
+                <td className="py-4 px-6">
                   <Link href={`/corridors/${c.id}`} className="font-medium hover:text-eve-orange transition-colors">
                     {c.name}
                   </Link>
                 </td>
-                <td className="py-3 px-4">
-                  <span className="flex items-center gap-1.5 text-xs text-eve-text-dim">
+                <td className="py-4 px-4">
+                  <span className="flex items-center gap-2 text-xs text-eve-text-dim">
                     {c.sourceGate.solarSystem}
-                    <ArrowRight className="w-3 h-3 text-eve-orange" />
+                    <ArrowRight className="w-3 h-3 text-eve-orange/60" />
                     {c.destGate.solarSystem}
                   </span>
                 </td>
-                <td className="py-3 px-4">
+                <td className="py-4 px-4">
                   <span className={`badge ${statusBg(c.status)}`}>
                     {c.status}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-right text-eve-text-dim">{formatNumber(c.totalJumps)}</td>
-                <td className="py-3 px-4 text-right text-eve-text-dim">{formatNumber(c.totalTrades)}</td>
-                <td className="py-3 px-5 text-right font-medium text-eve-orange">
+                <td className="py-4 px-4 text-right text-eve-text-dim font-mono text-xs">{formatNumber(c.totalJumps)}</td>
+                <td className="py-4 px-4 text-right text-eve-text-dim font-mono text-xs">{formatNumber(c.totalTrades)}</td>
+                <td className="py-4 px-6 text-right font-semibold text-eve-orange font-mono text-xs">
                   {formatSui(c.totalTollRevenue + c.totalTradeRevenue)}
                 </td>
               </tr>

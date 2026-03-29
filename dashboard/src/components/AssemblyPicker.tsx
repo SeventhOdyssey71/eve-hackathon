@@ -60,7 +60,7 @@ export function AssemblyPicker({
         </div>
       ) : mode === "select" && assemblies.length === 0 ? (
         <div>
-          <div className="text-xs text-eve-muted py-2 px-3 bg-eve-elevated rounded-lg mb-2">
+          <div className="text-xs text-eve-muted py-2 px-3 bg-white/[0.04] rounded-lg mb-2">
             {isLoading
               ? `Scanning wallet for ${typeLabel} objects...`
               : `No ${typeLabel} objects found in wallet.`}

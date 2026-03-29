@@ -242,13 +242,13 @@ export default function OperatePage() {
 
   if (!account) {
     return (
-      <div className="space-y-8 max-w-[1400px]">
+      <div className="space-y-8 max-w-[1440px]">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Operator Panel</h1>
           <p className="text-sm text-eve-text-dim mt-1">Manage and create trade corridors</p>
         </div>
         <div className="card flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-eve-elevated flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
             <Wallet className="w-7 h-7 text-eve-muted" />
           </div>
           <h3 className="text-lg font-semibold text-eve-text mb-1">Connect your wallet</h3>
@@ -261,18 +261,18 @@ export default function OperatePage() {
   }
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
+    <div className="space-y-8 max-w-[1440px]">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Operator Panel</h1>
         <p className="text-sm text-eve-text-dim mt-1">Manage your trade corridors</p>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-eve-surface border border-eve-border rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-eve-surface/50 border border-white/[0.06] rounded-xl w-fit">
         <button
           onClick={() => { setTab("manage"); setSetupStep(null); }}
           className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${
-            tab === "manage" ? "bg-eve-elevated text-eve-text shadow-sm" : "text-eve-text-dim hover:text-eve-text"
+            tab === "manage" ? "bg-white/[0.04] text-eve-text shadow-sm" : "text-eve-text-dim hover:text-eve-text"
           }`}
         >
           <Settings className="w-4 h-4 inline mr-2" /> Manage
@@ -280,7 +280,7 @@ export default function OperatePage() {
         <button
           onClick={() => { setTab("create"); setSetupStep(null); }}
           className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${
-            tab === "create" ? "bg-eve-elevated text-eve-text shadow-sm" : "text-eve-text-dim hover:text-eve-text"
+            tab === "create" ? "bg-white/[0.04] text-eve-text shadow-sm" : "text-eve-text-dim hover:text-eve-text"
           }`}
         >
           <Plus className="w-4 h-4 inline mr-2" /> Create New
@@ -290,7 +290,7 @@ export default function OperatePage() {
       {tab === "manage" ? (
         corridors.length === 0 ? (
           <div className="card flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-12 h-12 rounded-xl bg-eve-elevated flex items-center justify-center mb-3">
+            <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center mb-3">
               <Settings className="w-6 h-6 text-eve-muted" />
             </div>
             <p className="text-sm text-eve-text-dim mb-1">No corridors to manage</p>
@@ -311,7 +311,7 @@ export default function OperatePage() {
                     className={`w-full text-left p-4 rounded-xl border transition-all duration-150 ${
                       selectedCorridor === c.id
                         ? "border-eve-orange/40 bg-eve-orange/5"
-                        : "border-eve-border hover:border-eve-border/80 bg-eve-surface hover:bg-eve-elevated/50"
+                        : "border-white/[0.06] hover:border-white/[0.06]/80 bg-eve-surface/50 hover:bg-white/[0.04]/50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -360,7 +360,7 @@ export default function OperatePage() {
                           className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
                             setupStep === step
                               ? "bg-eve-orange text-eve-bg"
-                              : "bg-eve-elevated text-eve-text-dim hover:text-eve-text"
+                              : "bg-white/[0.04] text-eve-text-dim hover:text-eve-text"
                           }`}
                         >
                           {i + 1}. {step === "tolls" ? "Set Tolls" : step === "depots" ? "Configure Depots" : "Activate"}
@@ -684,7 +684,7 @@ export default function OperatePage() {
                           </div>
                           {/* Add liquidity */}
                           {isOwner && (
-                            <div className="border-t border-eve-border/40 pt-3">
+                            <div className="border-t border-white/[0.06]/40 pt-3">
                               <div className="text-[10px] font-semibold text-eve-text-dim mb-2">Add Liquidity</div>
                               <div className="grid grid-cols-3 gap-2">
                                 <div>

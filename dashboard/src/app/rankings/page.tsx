@@ -9,7 +9,7 @@ import Link from "next/link";
 const RANK_COLORS = ["text-eve-yellow", "text-eve-text", "text-eve-orange", "text-eve-text-dim", "text-eve-muted"];
 const RANK_BADGES = [
   { icon: Crown, bg: "bg-eve-yellow/10", border: "border-eve-yellow/30" },
-  { icon: Medal, bg: "bg-eve-text/5", border: "border-eve-border" },
+  { icon: Medal, bg: "bg-eve-text/5", border: "border-white/[0.06]" },
   { icon: Medal, bg: "bg-eve-orange/10", border: "border-eve-orange/30" },
 ];
 
@@ -47,7 +47,7 @@ export default function RankingsPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-[1400px]">
+      <div className="space-y-6 max-w-[1440px]">
         <h1 className="text-2xl font-semibold tracking-tight">Rankings</h1>
         <div className="card flex items-center justify-center py-20">
           <div className="animate-pulse text-eve-text-dim text-sm">Loading rankings...</div>
@@ -57,7 +57,7 @@ export default function RankingsPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
+    <div className="space-y-8 max-w-[1440px]">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Rankings</h1>
@@ -98,8 +98,8 @@ export default function RankingsPage() {
               const badge = RANK_BADGES[i];
               const BadgeIcon = badge?.icon || Medal;
               return (
-                <Link href={`/corridors/${c.id}`} key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-eve-elevated/60 transition-colors">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${badge?.bg || "bg-eve-elevated"} border ${badge?.border || "border-eve-border"}`}>
+                <Link href={`/corridors/${c.id}`} key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.04]/60 transition-colors">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${badge?.bg || "bg-white/[0.04]"} border ${badge?.border || "border-white/[0.06]"}`}>
                     <BadgeIcon className={`w-4 h-4 ${RANK_COLORS[i] || "text-eve-muted"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -138,9 +138,9 @@ export default function RankingsPage() {
                   href={explorerUrl("address", op.address)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-eve-elevated/60 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.04]/60 transition-colors"
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${badge?.bg || "bg-eve-elevated"} border ${badge?.border || "border-eve-border"}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${badge?.bg || "bg-white/[0.04]"} border ${badge?.border || "border-white/[0.06]"}`}>
                     <BadgeIcon className={`w-4 h-4 ${RANK_COLORS[i] || "text-eve-muted"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ export default function RankingsPage() {
           </h3>
           <div className="space-y-2">
             {byJumps.slice(0, 5).map((c, i) => (
-              <Link href={`/corridors/${c.id}`} key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-eve-elevated/60 transition-colors">
+              <Link href={`/corridors/${c.id}`} key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04]/60 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-bold w-5 text-center ${RANK_COLORS[i]}`}>#{i + 1}</span>
                   <span className="text-sm text-eve-text">{c.name}</span>
@@ -186,7 +186,7 @@ export default function RankingsPage() {
           </h3>
           <div className="space-y-2">
             {byTrades.slice(0, 5).map((c, i) => (
-              <Link href={`/corridors/${c.id}`} key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-eve-elevated/60 transition-colors">
+              <Link href={`/corridors/${c.id}`} key={c.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-white/[0.04]/60 transition-colors">
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-bold w-5 text-center ${RANK_COLORS[i]}`}>#{i + 1}</span>
                   <span className="text-sm text-eve-text">{c.name}</span>

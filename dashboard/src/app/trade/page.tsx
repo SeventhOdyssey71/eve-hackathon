@@ -55,7 +55,7 @@ export default function TradePage() {
   const activeCorrCount = corridors.filter((c) => c.status === "active").length;
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
+    <div className="space-y-8 max-w-[1440px]">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Trade Routes</h1>
@@ -72,7 +72,7 @@ export default function TradePage() {
 
       {routes.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-eve-elevated flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4">
             <ArrowRightLeft className="w-7 h-7 text-eve-muted" />
           </div>
           <h3 className="text-lg font-semibold text-eve-text mb-1">No trade routes available</h3>
@@ -106,7 +106,7 @@ export default function TradePage() {
                 className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
                   sortBy === key
                     ? "bg-eve-orange/10 text-eve-orange"
-                    : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
+                    : "text-eve-text-dim hover:text-eve-text hover:bg-white/[0.04]"
                 }`}
               >
                 <Icon className="w-3 h-3 inline mr-1" /> {label}
@@ -118,7 +118,7 @@ export default function TradePage() {
           <div className="card overflow-hidden">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-b border-eve-border text-xs text-eve-text-faint uppercase tracking-wider">
+                <tr className="border-b border-white/[0.06] text-xs text-eve-text-faint uppercase tracking-wider">
                   <th className="text-left py-3 px-5 font-medium">Route</th>
                   <th className="text-left py-3 px-4 font-medium">Trade Pair</th>
                   <th className="text-right py-3 px-4 font-medium">Exchange Rate</th>
@@ -131,7 +131,7 @@ export default function TradePage() {
                 {sorted.map((route, i) => (
                   <tr
                     key={`${route.corridorId}-${route.from}-${i}`}
-                    className={`border-b border-eve-border/40 hover:bg-eve-elevated/40 transition-colors cursor-pointer ${
+                    className={`border-b border-white/[0.06]/40 hover:bg-white/[0.04]/40 transition-colors cursor-pointer ${
                       routes.indexOf(route) === selectedRoute ? "bg-eve-orange/5" : ""
                     }`}
                     onClick={() => setSelectedRoute(routes.indexOf(route))}
@@ -315,7 +315,7 @@ export default function TradePage() {
               <div><span className="text-eve-muted">toll:</span> <span className="text-eve-text">{activeRoute.tollCost} SUI</span></div>
               <div><span className="text-eve-muted">input:</span> <span className="text-eve-text">{quantity} {activeRoute.inputItem}</span></div>
               <div><span className="text-eve-muted">output:</span> <span className="text-eve-orange">{estimate.output} {activeRoute.outputItem}</span></div>
-              <div className="border-t border-eve-border/40 pt-2 mt-2">
+              <div className="border-t border-white/[0.06]/40 pt-2 mt-2">
                 <div><span className="text-eve-muted">source_gate:</span> <span className="text-eve-yellow">required (EVE Frontier Gate)</span></div>
                 <div><span className="text-eve-muted">dest_gate:</span> <span className="text-eve-yellow">required (EVE Frontier Gate)</span></div>
                 <div><span className="text-eve-muted">character:</span> <span className="text-eve-yellow">required (Character NFT)</span></div>

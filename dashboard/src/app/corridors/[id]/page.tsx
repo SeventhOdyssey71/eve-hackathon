@@ -21,7 +21,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
 
   if (isLoading) {
     return (
-      <div className="space-y-8 max-w-[1400px]">
+      <div className="space-y-8 max-w-[1440px]">
         <div className="flex items-center gap-4">
           <Skeleton className="w-10 h-10 rounded-lg" />
           <div className="space-y-2">
@@ -50,7 +50,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   if (!corridor) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center animate-slide-up">
-        <div className="w-12 h-12 rounded-xl bg-eve-elevated flex items-center justify-center mb-3">
+        <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center mb-3">
           <AlertCircle className="w-6 h-6 text-eve-muted" />
         </div>
         <p className="text-sm text-eve-text-dim">Corridor not found</p>
@@ -62,7 +62,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   const totalRevenue = corridor.totalTollRevenue + corridor.totalTradeRevenue;
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
+    <div className="space-y-8 max-w-[1440px]">
       <div className="flex items-center gap-4">
         <Link href="/corridors" className="btn-ghost p-2">
           <ArrowLeft className="w-5 h-5" />
@@ -213,7 +213,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
                   <span className="text-eve-text-dim">Toll Revenue</span>
                   <span className="text-eve-text font-medium">{formatSui(corridor.totalTollRevenue)}</span>
                 </div>
-                <div className="h-2 rounded-full bg-eve-elevated overflow-hidden">
+                <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden">
                   <div
                     className="h-full rounded-full bg-eve-orange transition-all"
                     style={{ width: `${totalRevenue > 0 ? (corridor.totalTollRevenue / totalRevenue) * 100 : 0}%` }}
@@ -225,7 +225,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
                   <span className="text-eve-text-dim">Trade Fees</span>
                   <span className="text-eve-text font-medium">{formatSui(corridor.totalTradeRevenue)}</span>
                 </div>
-                <div className="h-2 rounded-full bg-eve-elevated overflow-hidden">
+                <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden">
                   <div
                     className="h-full rounded-full bg-eve-blue transition-all"
                     style={{ width: `${totalRevenue > 0 ? (corridor.totalTradeRevenue / totalRevenue) * 100 : 0}%` }}
@@ -240,7 +240,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
                       {formatSui((poolA?.totalFeesCollected || 0) + (poolB?.totalFeesCollected || 0))}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-eve-elevated overflow-hidden">
+                  <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden">
                     <div className="h-full rounded-full bg-eve-green transition-all" style={{ width: "0%" }} />
                   </div>
                 </div>
@@ -357,7 +357,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
                   <div className="text-sm font-medium mt-1">{formatPercent(pool!.feeBps)}</div>
                 </div>
               </div>
-              <div className="flex justify-between mt-4 pt-3 border-t border-eve-border text-xs text-eve-text-dim">
+              <div className="flex justify-between mt-4 pt-3 border-t border-white/[0.06] text-xs text-eve-text-dim">
                 <span>{pool!.totalSwaps} swaps</span>
                 <span>Vol: {formatSui(pool!.totalSuiVolume)}</span>
                 <span>Fees: {formatSui(pool!.totalFeesCollected)}</span>

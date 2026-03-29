@@ -131,7 +131,7 @@ export default function SwapPage() {
   }, [account, selected, pool, parsedInput]);
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
+    <div className="space-y-8 max-w-[1440px]">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">AMM Swap</h1>
@@ -152,7 +152,7 @@ export default function SwapPage() {
         </div>
       ) : realPools.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-eve-elevated flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
             <Repeat className="w-7 h-7 text-eve-muted" />
           </div>
           <h3 className="text-lg font-semibold text-eve-text mb-1">No AMM Pools Available</h3>
@@ -182,7 +182,7 @@ export default function SwapPage() {
                       className={`text-[10px] px-2 py-1 rounded-md font-medium transition-all ${
                         slippageBps === bps
                           ? "bg-eve-orange/10 text-eve-orange"
-                          : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
+                          : "text-eve-text-dim hover:text-eve-text hover:bg-white/[0.04]"
                       }`}
                     >
                       {formatPercent(bps)}
@@ -241,7 +241,7 @@ export default function SwapPage() {
                 <div className="flex justify-center">
                   <button
                     onClick={() => setDirection(direction === "sell" ? "buy" : "sell")}
-                    className="w-10 h-10 rounded-xl bg-eve-elevated border border-eve-border flex items-center justify-center hover:bg-eve-border transition-colors"
+                    className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center hover:bg-eve-border transition-colors"
                   >
                     <ArrowDown className="w-4 h-4 text-eve-orange" />
                   </button>
@@ -293,7 +293,7 @@ export default function SwapPage() {
 
               {/* Swap details */}
               {pool && parsedInput > 0 && (
-                <div className="mt-4 bg-eve-bg rounded-xl p-4 space-y-2">
+                <div className="mt-4 bg-white/[0.02] rounded-xl p-4 space-y-2">
                   <div className="text-xs font-semibold text-eve-text-dim mb-3 flex items-center gap-1.5">
                     <Info className="w-3 h-3" /> Swap Details
                   </div>
@@ -383,7 +383,7 @@ export default function SwapPage() {
                       {formatPercent(pool.feeBps)}
                     </div>
                   </div>
-                  <div className="pt-3 border-t border-eve-border">
+                  <div className="pt-3 border-t border-white/[0.06]">
                     <div className="text-xs text-eve-muted mb-2">Reserves</div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="card-elevated p-3 text-center">
@@ -463,7 +463,7 @@ export default function SwapPage() {
             <p className="text-sm text-eve-text-dim">
               This swap calls <code className="text-eve-orange text-xs">{direction === "sell" ? "liquidity_pool::sell_items" : "liquidity_pool::buy_items"}</code> on-chain and requires the following EVE Frontier objects:
             </p>
-            <div className="bg-eve-bg rounded-xl p-4 space-y-2 text-xs font-mono">
+            <div className="bg-white/[0.02] rounded-xl p-4 space-y-2 text-xs font-mono">
               <div><span className="text-eve-muted">package:</span> <span className="text-eve-text">{packageId.slice(0, 16)}...</span></div>
               <div><span className="text-eve-muted">corridor:</span> <span className="text-eve-text">{selected.corridorId.slice(0, 16)}...</span></div>
               <div><span className="text-eve-muted">storage_unit:</span> <span className="text-eve-text">{selected.storageUnitId.slice(0, 16)}...</span></div>

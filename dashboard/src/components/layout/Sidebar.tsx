@@ -22,19 +22,19 @@ export function Sidebar() {
 
   const navContent = (
     <>
-      <div className="p-5 border-b border-eve-border">
+      <div className="p-6 pb-5">
         <Link href="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-          <div className="w-8 h-8 rounded-lg bg-eve-orange/15 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-eve-orange" />
+          <div className="w-9 h-9 rounded-xl bg-eve-orange/15 flex items-center justify-center">
+            <Zap className="w-4.5 h-4.5 text-eve-orange" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-eve-text tracking-wide">FEN</div>
-            <div className="text-[10px] text-eve-text-dim">Frontier Exchange Network</div>
+            <div className="text-sm font-bold text-eve-text tracking-wide">FEN</div>
+            <div className="text-[10px] text-eve-muted font-medium">Frontier Exchange Network</div>
           </div>
         </Link>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav className="flex-1 px-3 space-y-1">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -44,10 +44,10 @@ export function Sidebar() {
               href={item.href}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150",
+                "flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200",
                 isActive
                   ? "bg-eve-orange/10 text-eve-orange"
-                  : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
+                  : "text-eve-muted hover:text-eve-text hover:bg-white/[0.04]"
               )}
             >
               <item.icon className="w-[18px] h-[18px]" />
@@ -57,10 +57,10 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-eve-border">
-        <div className="flex items-center gap-2 text-xs">
-          <div className="w-1.5 h-1.5 rounded-full bg-eve-green animate-pulse" />
-          <span className="text-eve-text-dim">Sui Testnet</span>
+      <div className="p-5 border-t border-white/[0.04]">
+        <div className="flex items-center gap-2 text-[11px]">
+          <div className="w-1.5 h-1.5 rounded-full bg-eve-green" />
+          <span className="text-eve-muted font-medium">Sui Testnet</span>
         </div>
       </div>
     </>
@@ -70,7 +70,7 @@ export function Sidebar() {
     <>
       {/* Mobile hamburger */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-lg bg-eve-surface border border-eve-border flex items-center justify-center"
+        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] flex items-center justify-center"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? (
@@ -83,7 +83,7 @@ export function Sidebar() {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/60 z-30"
+          className="md:hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-30"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -91,7 +91,7 @@ export function Sidebar() {
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "md:hidden fixed inset-y-0 left-0 z-40 w-60 bg-eve-surface border-r border-eve-border flex flex-col transition-transform duration-200",
+          "md:hidden fixed inset-y-0 left-0 z-40 w-60 bg-eve-surface/95 backdrop-blur-2xl border-r border-white/[0.06] flex flex-col transition-transform duration-300 ease-out",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -99,7 +99,7 @@ export function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 bg-eve-surface border-r border-eve-border flex-col shrink-0">
+      <aside className="hidden md:flex w-[220px] bg-eve-surface/50 border-r border-white/[0.04] flex-col shrink-0">
         {navContent}
       </aside>
     </>

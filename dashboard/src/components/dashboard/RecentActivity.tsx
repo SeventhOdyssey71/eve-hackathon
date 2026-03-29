@@ -26,34 +26,34 @@ interface Props {
 
 export function RecentActivity({ events }: Props) {
   return (
-    <div className="card p-5 h-full flex flex-col">
-      <h3 className="section-title mb-4">Recent Activity</h3>
+    <div className="card p-6 h-full flex flex-col">
+      <h3 className="section-title mb-5">Recent Activity</h3>
       {events.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
-          <div className="w-10 h-10 rounded-xl bg-eve-elevated flex items-center justify-center mb-3">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4">
             <Clock className="w-5 h-5 text-eve-muted" />
           </div>
-          <p className="text-sm text-eve-text-dim">No activity yet</p>
-          <p className="text-xs text-eve-muted mt-1">Events will appear here as they happen</p>
+          <p className="text-sm text-eve-text-dim font-medium">No activity yet</p>
+          <p className="text-xs text-eve-muted mt-1.5">Events will appear here as they happen</p>
         </div>
       ) : (
-        <div className="space-y-3 flex-1">
+        <div className="space-y-4 flex-1">
           {events.map((event) => {
             const Icon = EVENT_ICONS[event.type] || Zap;
-            const color = EVENT_COLORS[event.type] || "text-eve-muted bg-eve-muted/10";
+            const color = EVENT_COLORS[event.type] || "text-eve-muted bg-white/[0.04]";
             return (
               <div key={event.id} className="flex items-start gap-3">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] text-eve-text leading-tight truncate">{event.description}</div>
-                  <div className="text-xs text-eve-muted mt-0.5">
+                  <div className="text-[13px] text-eve-text leading-snug">{event.description}</div>
+                  <div className="text-[11px] text-eve-muted mt-1">
                     {event.corridorName ? `${event.corridorName} · ` : ""}{timeAgo(event.timestamp)}
                   </div>
                 </div>
                 {event.value != null && event.value > 0 && (
-                  <span className="text-xs font-medium text-eve-orange shrink-0">
+                  <span className="text-xs font-semibold text-eve-orange shrink-0 font-mono">
                     {formatSui(event.value)}
                   </span>
                 )}

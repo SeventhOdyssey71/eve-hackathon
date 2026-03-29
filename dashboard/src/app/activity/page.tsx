@@ -24,7 +24,7 @@ export default function ActivityPage() {
   const filtered = filter === "all" ? events : events.filter((e) => e.type === filter);
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="space-y-6 max-w-[1440px]">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Activity Explorer</h1>
@@ -49,7 +49,7 @@ export default function ActivityPage() {
               className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
                 filter === key
                   ? "bg-eve-orange/10 text-eve-orange"
-                  : "text-eve-text-dim hover:text-eve-text hover:bg-eve-elevated"
+                  : "text-eve-text-dim hover:text-eve-text hover:bg-white/[0.04]"
               }`}
             >
               {key === "all" ? "All Events" : config?.label || key}
@@ -75,7 +75,7 @@ export default function ActivityPage() {
         <div className="card overflow-hidden">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-b border-eve-border text-xs text-eve-text-faint uppercase tracking-wider">
+              <tr className="border-b border-white/[0.06] text-xs text-eve-text-faint uppercase tracking-wider">
                 <th className="text-left py-3 px-5 font-medium">Type</th>
                 <th className="text-left py-3 px-4 font-medium">Description</th>
                 <th className="text-left py-3 px-4 font-medium">Corridor</th>
@@ -90,7 +90,7 @@ export default function ActivityPage() {
                 const Icon = config.icon;
                 const txDigest = event.id.replace(/\d+$/, "");
                 return (
-                  <tr key={event.id} className="border-b border-eve-border/40 hover:bg-eve-elevated/40 transition-colors">
+                  <tr key={event.id} className="border-b border-white/[0.06]/40 hover:bg-white/[0.04]/40 transition-colors">
                     <td className="py-3 px-5">
                       <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${config.color}`}>
                         <Icon className="w-3.5 h-3.5" />

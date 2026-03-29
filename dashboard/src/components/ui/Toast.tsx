@@ -32,10 +32,10 @@ const ICONS: Record<ToastType, typeof CheckCircle> = {
 };
 
 const COLORS: Record<ToastType, string> = {
-  success: "border-eve-green/30 bg-eve-green/5",
-  error: "border-eve-red/30 bg-eve-red/5",
-  warning: "border-eve-yellow/30 bg-eve-yellow/5",
-  info: "border-eve-blue/30 bg-eve-blue/5",
+  success: "border-eve-green/20 bg-black/80 backdrop-blur-xl",
+  error: "border-eve-red/20 bg-black/80 backdrop-blur-xl",
+  warning: "border-eve-yellow/20 bg-black/80 backdrop-blur-xl",
+  info: "border-eve-blue/20 bg-black/80 backdrop-blur-xl",
 };
 
 const ICON_COLORS: Record<ToastType, string> = {

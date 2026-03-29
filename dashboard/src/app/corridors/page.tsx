@@ -10,7 +10,7 @@ export default function CorridorsPage() {
   const { corridors, isLoading } = useCorridors();
 
   return (
-    <div className="space-y-8 max-w-[1400px]">
+    <div className="space-y-8 max-w-[1440px]">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Corridors</h1>
@@ -25,7 +25,7 @@ export default function CorridorsPage() {
         <SkeletonCorridorList />
       ) : corridors.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center animate-slide-up">
-          <div className="w-14 h-14 rounded-2xl bg-eve-elevated flex items-center justify-center mb-4">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4">
             <Route className="w-7 h-7 text-eve-muted" />
           </div>
           <h3 className="text-lg font-semibold text-eve-text mb-1">No corridors yet</h3>

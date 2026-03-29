@@ -15,16 +15,16 @@ const STAT_ITEMS = [
 
 export function StatsGrid({ stats }: Props) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
       {STAT_ITEMS.map(({ key, label, icon: Icon, format, sub }) => (
-        <div key={key} className="card p-5">
-          <div className="flex items-center justify-between mb-3">
+        <div key={key} className="card p-6 glass-hover">
+          <div className="flex items-center justify-between mb-4">
             <span className="stat-label">{label}</span>
-            <div className="w-8 h-8 rounded-lg bg-eve-orange/10 flex items-center justify-center">
-              <Icon className="w-4 h-4 text-eve-orange" />
+            <div className="w-9 h-9 rounded-xl bg-eve-orange/8 flex items-center justify-center">
+              <Icon className="w-4 h-4 text-eve-orange/80" />
             </div>
           </div>
-          <div className="stat-value text-eve-text">{format(stats[key])}</div>
+          <div className="text-3xl font-bold tracking-tight text-eve-text">{format(stats[key])}</div>
           <div className="stat-sub">{sub(stats)}</div>
         </div>
       ))}
