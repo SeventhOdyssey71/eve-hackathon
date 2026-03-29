@@ -15,7 +15,7 @@ export default function Image() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          backgroundColor: "#08080d",
+          backgroundColor: "#000000",
           padding: "60px 80px",
           fontFamily: "system-ui, sans-serif",
         }}
@@ -28,8 +28,8 @@ export default function Image() {
             width: "100%",
             height: "100%",
             borderRadius: "24px",
-            backgroundColor: "#101018",
-            border: "2px solid #232336",
+            backgroundColor: "#0a0a0a",
+            border: "2px solid #1a1a1a",
             padding: "60px",
           }}
         >
@@ -46,7 +46,7 @@ export default function Image() {
                 justifyContent: "center",
                 fontSize: "32px",
                 fontWeight: 700,
-                color: "#d4600a",
+                color: "#e8622b",
               }}
             >
               F
@@ -67,7 +67,7 @@ export default function Image() {
           {/* Stats row */}
           <div style={{ display: "flex", gap: "60px", marginTop: "40px" }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: "18px", fontWeight: 600, color: "#d4600a" }}>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "#e8622b" }}>
                 6 Move Modules
               </div>
               <div style={{ fontSize: "14px", color: "#64748b", marginTop: "4px" }}>
@@ -75,13 +75,13 @@ export default function Image() {
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: "18px", fontWeight: 600, color: "#d4600a" }}>117 Tests</div>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "#e8622b" }}>117 Tests</div>
               <div style={{ fontSize: "14px", color: "#64748b", marginTop: "4px" }}>
                 Comprehensive Move test coverage
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: "18px", fontWeight: 600, color: "#d4600a" }}>
+              <div style={{ fontSize: "18px", fontWeight: 600, color: "#e8622b" }}>
                 Deployed on Testnet
               </div>
               <div style={{ fontSize: "14px", color: "#64748b", marginTop: "4px" }}>
@@ -101,7 +101,7 @@ export default function Image() {
           >
             {[
               { label: "Source Gate", color: "#f1f5f9" },
-              { label: "toll", color: "#d4600a", isDash: true },
+              { label: "toll", color: "#e8622b", isDash: true },
               { label: "Dest Gate", color: "#f1f5f9" },
               { label: "trade", color: "#34d399", isDash: true },
               { label: "AMM Pool", color: "#f1f5f9" },
@@ -127,8 +127,8 @@ export default function Image() {
                   style={{
                     padding: "10px 24px",
                     borderRadius: "8px",
-                    backgroundColor: "#181824",
-                    border: "1px solid #232336",
+                    backgroundColor: "#111111",
+                    border: "1px solid #1a1a1a",
                     fontSize: "14px",
                     color: item.color,
                   }}
