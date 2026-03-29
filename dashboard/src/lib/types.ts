@@ -75,6 +75,11 @@ export interface TradeRoute {
   to: string;
   inputItem: string;
   outputItem: string;
+  inputTypeId: number;
+  outputTypeId: number;
+  sourceGateId: string;
+  destGateId: string;
+  depotId: string;
   effectiveRate: number;
   tollCost: number;
   liquidity: number;

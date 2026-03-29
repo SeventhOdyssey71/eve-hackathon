@@ -3,10 +3,12 @@
 import { useState, useCallback } from "react";
 import { useTradeRoutes, useCorridors } from "@/hooks/use-corridors";
 import { formatNumber } from "@/lib/utils";
-import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft, Zap, Info } from "lucide-react";
+import { ArrowRight, TrendingUp, Droplets, Filter, ArrowRightLeft, Zap, Info, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
+import { useCharacter, useOwnedItems } from "@/hooks/use-character";
+import { buildTollAndTrade } from "@/lib/transactions";
 
 export default function TradePage() {
   const [sortBy, setSortBy] = useState<"rate" | "toll" | "fee">("rate");
@@ -16,6 +18,12 @@ export default function TradePage() {
   const { corridors } = useCorridors();
   const account = useCurrentAccount();
   const packageId = useNetworkVariable("fenPackageId");
+  const { characterId } = useCharacter();
+  const { items: ownedItems } = useOwnedItems();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const [txStatus, setTxStatus] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [txError, setTxError] = useState<string | null>(null);
+  const [txDigest, setTxDigest] = useState<string | null>(null);
 
   const sorted = [...routes].sort((a, b) => {
     switch (sortBy) {
@@ -45,11 +53,44 @@ export default function TradePage() {
 
   const [showRequirements, setShowRequirements] = useState(false);
 
-  const handleTrade = useCallback(() => {
+  // Find a matching input item from wallet for this trade route
+  const matchingItem = activeRoute
+    ? ownedItems.find((item) => item.typeId === activeRoute.inputTypeId)
+    : null;
+
+  const canExecute = !!account && !!characterId && !!matchingItem && !!activeRoute && quantity > 0;
+
+  const handleTrade = useCallback(async () => {
     if (!account || !activeRoute || quantity <= 0) return;
-    // Show requirements dialog — actual execution requires EVE Frontier game objects
+
+    // If we have character + items, execute the real transaction
+    if (characterId && matchingItem) {
+      setTxStatus("pending");
+      setTxError(null);
+      try {
+        const tx = buildTollAndTrade({
+          packageId,
+          corridorId: activeRoute.corridorId,
+          sourceGateId: activeRoute.sourceGateId,
+          destGateId: activeRoute.destGateId,
+          characterId,
+          tollAmount: activeRoute.tollCost * 1_000_000_000,
+          storageUnitId: activeRoute.depotId,
+          inputItemId: matchingItem.objectId,
+        });
+        const result = await signAndExecute({ transaction: tx });
+        setTxDigest(result.digest);
+        setTxStatus("success");
+      } catch (err) {
+        setTxError(err instanceof Error ? err.message : "Transaction failed");
+        setTxStatus("error");
+      }
+      return;
+    }
+
+    // Otherwise show requirements dialog
     setShowRequirements(true);
-  }, [account, activeRoute, quantity]);
+  }, [account, activeRoute, quantity, characterId, matchingItem, packageId, signAndExecute]);
 
   // Count active vs total corridors for the header stat
   const activeCorrCount = corridors.filter((c) => c.status === "active").length;
@@ -264,17 +305,60 @@ export default function TradePage() {
                   </div>
                 </div>
 
+                {/* Readiness indicators */}
+                {account && (
+                  <div className="bg-white/[0.02] rounded-xl p-4 space-y-2 text-xs">
+                    <div className="font-semibold text-eve-text-dim mb-2">Transaction Readiness</div>
+                    <div className="flex items-center gap-2">
+                      {account ? <CheckCircle className="w-3.5 h-3.5 text-eve-green" /> : <XCircle className="w-3.5 h-3.5 text-eve-red" />}
+                      <span className="text-eve-text-dim">Wallet connected</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {characterId ? <CheckCircle className="w-3.5 h-3.5 text-eve-green" /> : <XCircle className="w-3.5 h-3.5 text-eve-muted" />}
+                      <span className="text-eve-text-dim">
+                        {characterId ? `Character found` : "EVE Frontier Character not found"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {matchingItem ? <CheckCircle className="w-3.5 h-3.5 text-eve-green" /> : <XCircle className="w-3.5 h-3.5 text-eve-muted" />}
+                      <span className="text-eve-text-dim">
+                        {matchingItem ? `${activeRoute.inputItem} available (${matchingItem.quantity})` : `No ${activeRoute.inputItem} in wallet`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Transaction status */}
+                {txStatus === "success" && txDigest && (
+                  <div className="bg-eve-green/5 border border-eve-green/20 rounded-xl p-3 flex items-center gap-2 text-xs">
+                    <CheckCircle className="w-4 h-4 text-eve-green" />
+                    <span className="text-eve-green font-medium">Trade executed!</span>
+                    <a href={`https://suiscan.xyz/testnet/tx/${txDigest}`} target="_blank" rel="noopener noreferrer" className="text-eve-orange ml-auto hover:underline">
+                      View tx
+                    </a>
+                  </div>
+                )}
+                {txStatus === "error" && txError && (
+                  <div className="bg-eve-red/5 border border-eve-red/20 rounded-xl p-3 text-xs text-eve-red">
+                    {txError}
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     className="btn-primary flex-1"
-                    disabled={!account || quantity <= 0}
+                    disabled={!account || quantity <= 0 || txStatus === "pending"}
                     onClick={handleTrade}
                   >
-                    {!account
+                    {txStatus === "pending" ? (
+                      <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Executing...</span>
+                    ) : !account
                       ? "Connect Wallet to Trade"
                       : quantity <= 0
                         ? "Enter Quantity"
-                        : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
+                        : canExecute
+                          ? `Execute Trade: ${quantity} ${activeRoute.inputItem} → ${estimate.output} ${activeRoute.outputItem}`
+                          : `Trade ${quantity} ${activeRoute.inputItem} for ${estimate.output} ${activeRoute.outputItem}`}
                   </button>
                   <Link
                     href={`/corridors/${activeRoute.corridorId}`}
@@ -284,13 +368,11 @@ export default function TradePage() {
                   </Link>
                 </div>
 
-                {account && (
+                {account && !canExecute && (
                   <p className="text-[10px] text-eve-muted text-center">
-                    This will submit a transaction to pay the toll and execute the trade in a single PTB.
-                    You need SUI for the toll and the input items in your inventory.
-                    <span className="block mt-1 text-eve-yellow/70">
-                      Requires EVE Frontier Character, Gate, SSU, and Item objects in your wallet.
-                    </span>
+                    {!characterId
+                      ? "Connect with an EVE Frontier wallet that holds a Character to execute trades directly."
+                      : "You need the input items in your wallet to execute. Click the button to see full requirements."}
                   </p>
                 )}
               </div>

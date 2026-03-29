@@ -2,10 +2,12 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useCorridors, usePoolConfigs } from "@/hooks/use-corridors";
-import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { useNetworkVariable } from "@/lib/sui-config";
 import { formatSui, formatNumber, formatPercent } from "@/lib/utils";
 import { getItemName } from "@/lib/items";
+import { useCharacter, useOwnedItems } from "@/hooks/use-character";
+import { buildSellItems, buildBuyItems } from "@/lib/transactions";
 import {
   Repeat,
   ArrowDown,
@@ -14,6 +16,9 @@ import {
   AlertTriangle,
   Activity,
   BarChart3,
+  CheckCircle,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import type { PoolConfig } from "@/lib/types";
@@ -123,12 +128,52 @@ export default function SwapPage() {
     : 0;
 
   const [showRequirements, setShowRequirements] = useState(false);
+  const { characterId } = useCharacter();
+  const { items: ownedItems } = useOwnedItems();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const [txStatus, setTxStatus] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [txError, setTxError] = useState<string | null>(null);
+  const [txDigest, setTxDigest] = useState<string | null>(null);
 
-  const handleSwap = useCallback(() => {
+  const matchingItem = pool ? ownedItems.find((item) => item.typeId === pool.itemTypeId) : null;
+  const canExecute = !!account && !!characterId && (direction === "buy" || !!matchingItem);
+
+  const handleSwap = useCallback(async () => {
     if (!account || !selected || !pool || parsedInput <= 0) return;
-    // Show requirements dialog — actual execution requires EVE Frontier game objects
+
+    if (characterId && (direction === "buy" || matchingItem)) {
+      setTxStatus("pending");
+      setTxError(null);
+      try {
+        const tx = direction === "sell"
+          ? buildSellItems({
+              packageId,
+              corridorId: selected.corridorId,
+              storageUnitId: selected.storageUnitId,
+              characterId,
+              inputItemId: matchingItem!.objectId,
+              minSuiOut: minOutput,
+            })
+          : buildBuyItems({
+              packageId,
+              corridorId: selected.corridorId,
+              storageUnitId: selected.storageUnitId,
+              characterId,
+              suiAmount: Math.floor(parsedInput * 1_000_000_000),
+              minItemsOut: minOutput,
+            });
+        const result = await signAndExecute({ transaction: tx });
+        setTxDigest(result.digest);
+        setTxStatus("success");
+      } catch (err) {
+        setTxError(err instanceof Error ? err.message : "Swap failed");
+        setTxStatus("error");
+      }
+      return;
+    }
+
     setShowRequirements(true);
-  }, [account, selected, pool, parsedInput]);
+  }, [account, selected, pool, parsedInput, characterId, matchingItem, direction, minOutput, packageId, signAndExecute]);
 
   return (
     <div className="space-y-8 max-w-[1440px]">
@@ -326,33 +371,55 @@ export default function SwapPage() {
                 </div>
               )}
 
+              {/* Readiness + status */}
+              {account && parsedInput > 0 && (
+                <div className="mt-4 bg-white/[0.02] rounded-xl p-3 space-y-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    {characterId ? <CheckCircle className="w-3 h-3 text-eve-green" /> : <XCircle className="w-3 h-3 text-eve-muted" />}
+                    <span className="text-eve-text-dim">{characterId ? "Character found" : "No character found"}</span>
+                  </div>
+                  {direction === "sell" && (
+                    <div className="flex items-center gap-2">
+                      {matchingItem ? <CheckCircle className="w-3 h-3 text-eve-green" /> : <XCircle className="w-3 h-3 text-eve-muted" />}
+                      <span className="text-eve-text-dim">{matchingItem ? `${getItemName(pool?.itemTypeId || 0)} available` : "Input items not in wallet"}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {txStatus === "success" && txDigest && (
+                <div className="mt-3 bg-eve-green/5 border border-eve-green/20 rounded-xl p-3 flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-4 h-4 text-eve-green" />
+                  <span className="text-eve-green font-medium">Swap executed!</span>
+                  <a href={`https://suiscan.xyz/testnet/tx/${txDigest}`} target="_blank" rel="noopener noreferrer" className="text-eve-orange ml-auto hover:underline">View tx</a>
+                </div>
+              )}
+              {txStatus === "error" && txError && (
+                <div className="mt-3 bg-eve-red/5 border border-eve-red/20 rounded-xl p-3 text-xs text-eve-red">{txError}</div>
+              )}
+
               {/* Swap button */}
               <button
-                className="btn-primary w-full mt-5"
-                disabled={!account || parsedInput <= 0 || estimate.output <= 0}
+                className="btn-primary w-full mt-4"
+                disabled={!account || parsedInput <= 0 || estimate.output <= 0 || txStatus === "pending"}
                 onClick={handleSwap}
               >
-                {!account
+                {txStatus === "pending" ? (
+                  <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Executing...</span>
+                ) : !account
                   ? "Connect Wallet to Swap"
                   : parsedInput <= 0
                     ? "Enter Amount"
                     : estimate.output <= 0
                       ? "Insufficient Liquidity"
-                      : direction === "sell"
-                        ? `Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
-                        : `Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`}
+                      : canExecute
+                        ? direction === "sell"
+                          ? `Execute: Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
+                          : `Execute: Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`
+                        : direction === "sell"
+                          ? `Sell ${parsedInput} Items for ${(estimate.output / 1_000_000_000).toFixed(4)} SUI`
+                          : `Buy ${formatNumber(estimate.output)} Items for ${parsedInput} SUI`}
               </button>
-
-              {account && parsedInput > 0 && (
-                <p className="text-[10px] text-eve-muted text-center mt-2">
-                  {direction === "sell"
-                    ? "Items will be deposited into the pool's SSU. SUI will be transferred to your wallet."
-                    : "SUI will be deposited into the pool. Items will be withdrawn from the SSU to your wallet."}
-                  <span className="block mt-1 text-eve-yellow/70">
-                    Requires an EVE Frontier Character and Item objects in your wallet.
-                  </span>
-                </p>
-              )}
             </div>
           </div>
 
