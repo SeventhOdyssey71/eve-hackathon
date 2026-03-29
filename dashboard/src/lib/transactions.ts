@@ -813,3 +813,82 @@ export function buildRecordOrderPlaced({
   });
   return tx;
 }
+
+// --- EVE Frontier Extension Authorization ---
+// Authorizes FEN's FenAuth witness type on a StorageUnit or Gate.
+// Uses the 3-step borrow pattern: borrow OwnerCap from Character → authorize → return.
+
+const WORLD_PACKAGE_ID = "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75";
+
+export function buildAuthorizeStorageUnitExtension({
+  fenPackageId,
+  characterId,
+  storageUnitId,
+  ownerCapId,
+}: {
+  fenPackageId: string;
+  characterId: string;
+  storageUnitId: string;
+  ownerCapId: string;
+}) {
+  const tx = new Transaction();
+  const authType = `${fenPackageId}::toll_gate::FenAuth`;
+
+  // Step 1: Borrow OwnerCap<StorageUnit> from Character
+  const [cap, receipt] = tx.moveCall({
+    target: `${WORLD_PACKAGE_ID}::character::borrow_owner_cap`,
+    typeArguments: [`${WORLD_PACKAGE_ID}::storage_unit::StorageUnit`],
+    arguments: [tx.object(characterId), tx.object(ownerCapId)],
+  });
+
+  // Step 2: Authorize FenAuth extension on the StorageUnit
+  tx.moveCall({
+    target: `${WORLD_PACKAGE_ID}::storage_unit::authorize_extension`,
+    typeArguments: [authType],
+    arguments: [tx.object(storageUnitId), cap],
+  });
+
+  // Step 3: Return OwnerCap to Character
+  tx.moveCall({
+    target: `${WORLD_PACKAGE_ID}::character::return_owner_cap`,
+    typeArguments: [`${WORLD_PACKAGE_ID}::storage_unit::StorageUnit`],
+    arguments: [tx.object(characterId), cap, receipt],
+  });
+
+  return tx;
+}
+
+export function buildAuthorizeGateExtension({
+  fenPackageId,
+  characterId,
+  gateId,
+  ownerCapId,
+}: {
+  fenPackageId: string;
+  characterId: string;
+  gateId: string;
+  ownerCapId: string;
+}) {
+  const tx = new Transaction();
+  const authType = `${fenPackageId}::toll_gate::FenAuth`;
+
+  const [cap, receipt] = tx.moveCall({
+    target: `${WORLD_PACKAGE_ID}::character::borrow_owner_cap`,
+    typeArguments: [`${WORLD_PACKAGE_ID}::gate::Gate`],
+    arguments: [tx.object(characterId), tx.object(ownerCapId)],
+  });
+
+  tx.moveCall({
+    target: `${WORLD_PACKAGE_ID}::gate::authorize_extension`,
+    typeArguments: [authType],
+    arguments: [tx.object(gateId), cap],
+  });
+
+  tx.moveCall({
+    target: `${WORLD_PACKAGE_ID}::character::return_owner_cap`,
+    typeArguments: [`${WORLD_PACKAGE_ID}::gate::Gate`],
+    arguments: [tx.object(characterId), cap, receipt],
+  });
+
+  return tx;
+}

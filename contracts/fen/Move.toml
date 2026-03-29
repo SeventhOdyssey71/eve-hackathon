@@ -5,4 +5,6 @@ edition = "2024.beta"
 [dependencies]
 world = { local = "../../world-contracts/contracts/world" }
 
-# [addresses] removed — new-style manifest uses [environments] or auto-resolution
+[environments]
+testnet_utopia = "4c78adac"
+testnet_stillness = "4c78adac"

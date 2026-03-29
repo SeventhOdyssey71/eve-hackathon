@@ -6,12 +6,14 @@ const WORLD_API_URLS = {
 } as const;
 
 // Cache the item catalog for 10 minutes
-let cachedData: { items: Record<string, unknown>[]; fetchedAt: number } | null = null;
+let cachedData: { items: Record<string, unknown>[]; fetchedAt: number } | null =
+  null;
 const CACHE_TTL = 10 * 60 * 1000;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const tenant = searchParams.get("tenant") === "stillness" ? "stillness" : "utopia";
+  const tenant =
+    searchParams.get("tenant") === "stillness" ? "stillness" : "utopia";
   const apiBase = WORLD_API_URLS[tenant];
 
   try {
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
     if (!res.ok) {
       return NextResponse.json(
         { error: `${tenant} API unavailable` },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch item catalog" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -5,9 +5,18 @@ import { useState, useEffect } from "react";
 import { useNetworkVariable } from "@/lib/sui-config";
 
 /**
- * Discovers the connected wallet's EVE Frontier Character by looking for
- * PlayerProfile objects, then resolving the character_id.
- * Also discovers owned Item objects for trading.
+ * Discovers the connected wallet's EVE Frontier Character.
+ *
+ * EVE Frontier's object ownership model:
+ * - Wallet 0x62c8... (admin) creates the Character
+ * - Character object lives at 0x5362... (shared)
+ * - OwnerCap<Character> is owned by 0x5362... (the Character address)
+ * - PlayerProfile (character::PlayerProfile) is owned by 0x9d8b... (character_address)
+ *
+ * Strategy:
+ * 1. Look for character::PlayerProfile → extract character_id
+ * 2. Look for OwnerCap<Character> → extract authorized_object_id
+ * 3. Check if wallet address itself is a Character object
  */
 export function useCharacter() {
   const client = useSuiClient();
@@ -26,47 +35,72 @@ export function useCharacter() {
 
     async function discover() {
       try {
-        // Look for PlayerProfile objects owned by this wallet
-        // PlayerProfile contains the character_id field
-        const result = await client.getOwnedObjects({
-          owner: account!.address,
-          filter: { StructType: "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75::smart_character::PlayerProfile" },
-          options: { showContent: true },
-        });
+        for (const worldPkg of [
+          "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75",
+          "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c",
+        ]) {
+          // Strategy 1: character::PlayerProfile (correct module name)
+          for (const moduleName of ["character", "smart_character"]) {
+            const result = await client.getOwnedObjects({
+              owner: account!.address,
+              filter: { StructType: `${worldPkg}::${moduleName}::PlayerProfile` },
+              options: { showContent: true },
+            });
 
-        if (cancelled) return;
+            if (cancelled) return;
 
-        if (result.data.length > 0) {
-          const content = result.data[0]?.data?.content;
-          if (content && "fields" in content) {
-            const fields = content.fields as Record<string, unknown>;
-            const charId = fields.character_id as string;
-            if (charId) {
-              setCharacterId(charId);
-              setIsLoading(false);
-              return;
+            if (result.data.length > 0) {
+              const content = result.data[0]?.data?.content;
+              if (content && "fields" in content) {
+                const fields = content.fields as Record<string, unknown>;
+                const charId = fields.character_id as string;
+                if (charId) {
+                  setCharacterId(charId);
+                  setIsLoading(false);
+                  return;
+                }
+              }
+            }
+          }
+
+          // Strategy 2: OwnerCap<Character>
+          const capResult = await client.getOwnedObjects({
+            owner: account!.address,
+            filter: { StructType: `${worldPkg}::access::OwnerCap<${worldPkg}::character::Character>` },
+            options: { showContent: true },
+          });
+
+          if (cancelled) return;
+
+          if (capResult.data.length > 0) {
+            const content = capResult.data[0]?.data?.content;
+            if (content && "fields" in content) {
+              const fields = content.fields as Record<string, unknown>;
+              const charId = fields.authorized_object_id as string;
+              if (charId) {
+                setCharacterId(charId);
+                setIsLoading(false);
+                return;
+              }
             }
           }
         }
 
-        // Also try Stillness world package
-        const result2 = await client.getOwnedObjects({
-          owner: account!.address,
-          filter: { StructType: "0x28b497559d65ab320d9da4613bf2498d5946b2c0ae3597ccfda3072ce127448c::smart_character::PlayerProfile" },
-          options: { showContent: true },
-        });
-
-        if (cancelled) return;
-
-        if (result2.data.length > 0) {
-          const content = result2.data[0]?.data?.content;
-          if (content && "fields" in content) {
-            const fields = content.fields as Record<string, unknown>;
-            const charId = fields.character_id as string;
-            if (charId) {
-              setCharacterId(charId);
-            }
+        // Strategy 3: The wallet address itself may be a Character object
+        try {
+          const obj = await client.getObject({
+            id: account!.address,
+            options: { showType: true },
+          });
+          if (cancelled) return;
+          const objType = obj.data?.type || "";
+          if (objType.includes("character::Character")) {
+            setCharacterId(account!.address);
+            setIsLoading(false);
+            return;
           }
+        } catch {
+          // Not a valid object — continue
         }
       } catch {
         // Character discovery failed — not critical

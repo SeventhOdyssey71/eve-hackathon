@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontier Exchange Network (FEN) — Technical Q&A Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page {
+    size: letter;
+    margin: 0.75in;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 11pt;
+    line-height: 1.65;
+    color: #000;
+    background: #fff;
+    max-width: 7in;
+    margin: 0 auto;
+    padding: 0.75in;
+  }
+
+  /* --- PAGE BREAK UTILITY --- */
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+    margin-top: 2.5em;
+  }
+
+  /* --- COVER PAGE --- */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 9in;
+    text-align: center;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .cover h1 {
+    font-size: 32pt;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.15em;
+    color: #000;
+  }
+
+  .cover .subtitle {
+    font-size: 14pt;
+    font-weight: 400;
+    color: #444;
+    margin-bottom: 2em;
+    letter-spacing: 0.01em;
+  }
+
+  .cover .meta {
+    font-size: 10pt;
+    color: #555;
+    line-height: 1.8;
+  }
+
+  .cover .meta strong {
+    color: #000;
+  }
+
+  .cover .divider {
+    width: 80px;
+    height: 2px;
+    background: #000;
+    margin: 1.5em auto;
+  }
+
+  /* --- SECTION HEADERS --- */
+  .section-header {
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.3em;
+    margin-bottom: 1.5em;
+    margin-top: 0.5em;
+  }
+
+  .section-header h2 {
+    font-size: 18pt;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #000;
+    text-transform: uppercase;
+  }
+
+  .section-header .section-num {
+    font-size: 10pt;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.2em;
+  }
+
+  /* --- Q&A STYLING --- */
+  .qa {
+    margin-bottom: 1.8em;
+  }
+
+  .question {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #000;
+    margin-bottom: 0.4em;
+    line-height: 1.4;
+  }
+
+  .question::before {
+    content: "Q: ";
+    font-weight: 800;
+  }
+
+  .answer {
+    font-size: 11pt;
+    font-weight: 400;
+    color: #111;
+    line-height: 1.7;
+    padding-left: 1.2em;
+    border-left: 2px solid #ccc;
+    margin-left: 0.2em;
+  }
+
+  .answer p {
+    margin-bottom: 0.7em;
+  }
+
+  .answer p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* --- LISTS --- */
+  .answer ul, .answer ol {
+    margin: 0.5em 0 0.7em 1.2em;
+  }
+
+  .answer li {
+    margin-bottom: 0.35em;
+  }
+
+  /* --- FORMULA BOX --- */
+  .formula {
+    font-family: 'Inter', monospace;
+    font-weight: 500;
+    font-size: 10.5pt;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    padding: 0.6em 1em;
+    margin: 0.6em 0;
+    display: block;
+    letter-spacing: 0.01em;
+  }
+
+  /* --- TABLE --- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8em 0;
+    font-size: 10pt;
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 0.45em 0.6em;
+    text-align: left;
+  }
+
+  th {
+    font-weight: 700;
+    background: #000;
+    color: #fff;
+  }
+
+  td {
+    background: #fff;
+  }
+
+  /* --- HORIZONTAL RULE --- */
+  hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 2em 0;
+  }
+
+  /* --- FOOTER --- */
+  .doc-footer {
+    margin-top: 3em;
+    padding-top: 1em;
+    border-top: 1px solid #999;
+    font-size: 9pt;
+    color: #666;
+    text-align: center;
+  }
+
+  /* --- SUMMARY BOX --- */
+  .summary-box {
+    border: 2px solid #000;
+    padding: 1.2em 1.5em;
+    margin: 1em 0;
+  }
+
+  .summary-box h3 {
+    font-size: 13pt;
+    font-weight: 800;
+    margin-bottom: 0.6em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .summary-box ul {
+    margin-left: 1.2em;
+  }
+
+  .summary-box li {
+    margin-bottom: 0.35em;
+  }
+
+  /* --- TOC --- */
+  .toc {
+    margin: 1.5em 0;
+  }
+
+  .toc-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.35em 0;
+    border-bottom: 1px dotted #aaa;
+    font-size: 11pt;
+  }
+
+  .toc-item span:first-child {
+    font-weight: 600;
+  }
+
+  .toc-item span:last-child {
+    font-weight: 400;
+    color: #555;
+  }
+
+  /* --- PRINT ADJUSTMENTS --- */
+  @media print {
+    body {
+      padding: 0;
+      max-width: none;
+    }
+
+    .page-break {
+      margin-top: 0;
+    }
+  }
+
+  /* Strong emphasis */
+  strong {
+    font-weight: 700;
+    color: #000;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- COVER PAGE -->
+<!-- ============================================================ -->
+<div class="cover">
+  <div>
+    <h1>Frontier Exchange<br>Network</h1>
+    <p class="subtitle">A Technical Q&A Document</p>
+    <div class="divider"></div>
+    <div class="meta">
+      <strong>Project:</strong> FEN &mdash; Trade Infrastructure for EVE Frontier<br>
+      <strong>Hackathon:</strong> EVE Frontier x Sui 2026 ($80,000 Prize Pool)<br>
+      <strong>Theme:</strong> "A Toolkit for Civilization"<br>
+      <strong>Track:</strong> External Tools<br>
+      <strong>Builder:</strong> SeventhOdyssey71<br>
+      <strong>Date:</strong> March 2026
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TABLE OF CONTENTS -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <h2>Table of Contents</h2>
+  </div>
+
+  <div class="toc">
+    <div class="toc-item"><span>Section 1 &mdash; The Basics</span><span>What FEN is, who it's for</span></div>
+    <div class="toc-item"><span>Section 2 &mdash; The Problem</span><span>Why FEN needs to exist</span></div>
+    <div class="toc-item"><span>Section 3 &mdash; How It Works</span><span>Trade corridors explained</span></div>
+    <div class="toc-item"><span>Section 4 &mdash; The Smart Contracts</span><span>Six modules in plain English</span></div>
+    <div class="toc-item"><span>Section 5 &mdash; The AMM (Liquidity Pool)</span><span>Automated market making</span></div>
+    <div class="toc-item"><span>Section 6 &mdash; The Dashboard</span><span>Frontend and user experience</span></div>
+    <div class="toc-item"><span>Section 7 &mdash; Deployment and Infrastructure</span><span>What's live on Sui</span></div>
+    <div class="toc-item"><span>Section 8 &mdash; Technical Deep Dive</span><span>Patterns, testing, security</span></div>
+    <div class="toc-item"><span>Section 9 &mdash; Competitive Landscape</span><span>How FEN compares</span></div>
+    <div class="toc-item"><span>Section 10 &mdash; One-Page Summary</span><span>Everything at a glance</span></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: THE BASICS -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 1</span>
+    <h2>The Basics</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is EVE Frontier?</p>
+    <div class="answer">
+      <p>EVE Frontier is a blockchain-based space game built on the Sui network. It is developed by CCP Games, the studio behind the legendary EVE Online. In EVE Frontier, players explore a vast universe, build infrastructure, gather resources, and trade items &mdash; all recorded on the Sui blockchain. The game features programmable objects like Smart Gates (for interstellar travel) and Smart Storage Units (for storing items), which developers can extend with custom logic through smart contracts.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is the Frontier Exchange Network (FEN)?</p>
+    <div class="answer">
+      <p>FEN is trade infrastructure for EVE Frontier. Think of it as the economic plumbing that connects the game's existing objects into a functioning marketplace. FEN lets players create "trade corridors" &mdash; configurable pipelines that link Smart Gates and Smart Storage Units into complete economic units. Operators who set up corridors earn revenue from tolls and trading fees. Traders who use them get transparent pricing and simple, one-click execution of trades.</p>
+      <p>In the simplest terms: FEN turns isolated game objects into a connected economy.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">Who built FEN, and what is the hackathon?</p>
+    <div class="answer">
+      <p>FEN was built by <strong>SeventhOdyssey71</strong> for the <strong>EVE Frontier x Sui 2026 Hackathon</strong>, running March 11&ndash;31, 2026. The hackathon has an $80,000 USD prize pool and the theme "A Toolkit for Civilization." FEN is entered in the External Tools track, meaning it extends the game's capabilities from outside the core game client. The hackathon challenges builders to create tools that help players organize, trade, and build civilizations within EVE Frontier's universe.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">Who are the users of FEN?</p>
+    <div class="answer">
+      <p>FEN serves two distinct groups:</p>
+      <ul>
+        <li><strong>Corridor Operators:</strong> Players who own Smart Gates and Storage Units. They configure trade corridors, set toll prices, define exchange ratios, and earn passive income from every transaction that flows through their infrastructure.</li>
+        <li><strong>Traders:</strong> Players who want to move between star systems or exchange items. They pay tolls to use gates, swap items at depots, and trade through liquidity pools &mdash; all with transparent, on-chain pricing.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What blockchain does FEN run on?</p>
+    <div class="answer">
+      <p>FEN runs on <strong>Sui</strong>, a high-performance Layer 1 blockchain. Sui uses the Move programming language, which was originally designed at Meta for the Diem project. Move is particularly well-suited for digital assets because it treats assets as first-class objects that cannot be accidentally copied or destroyed. All of FEN's smart contracts are written in Move. The project is currently deployed on Sui Testnet and linked to the Utopia sandbox world within EVE Frontier.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: THE PROBLEM -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 2</span>
+    <h2>The Problem</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">Why does EVE Frontier need FEN? What's missing?</p>
+    <div class="answer">
+      <p>EVE Frontier gives players powerful building blocks &mdash; Smart Gates for travel and Smart Storage Units for item storage &mdash; but it does not provide any native way to turn those building blocks into an economy. Specifically, the game lacks four critical capabilities:</p>
+      <ul>
+        <li><strong>No toll collection:</strong> Gate owners cannot charge players for passage. There is no built-in mechanism to monetize gate infrastructure.</li>
+        <li><strong>No item exchange:</strong> Storage unit owners cannot offer item-for-item swaps. Two players with complementary resources have no automated way to trade.</li>
+        <li><strong>No price discovery:</strong> There is no marketplace or pricing mechanism. Players have no way to know what anything is worth relative to anything else.</li>
+        <li><strong>No revenue tracking:</strong> Even if players cobble together informal trades, there is no system to track earnings, fees, or economic activity across multiple assemblies.</li>
+      </ul>
+      <p>Without these capabilities, the game's economy remains fragmented. Players own infrastructure but cannot operate it as a business. FEN fills every one of these gaps.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">Can you give a real-world analogy?</p>
+    <div class="answer">
+      <p>Imagine a highway system where toll booths, gas stations, and rest stops all exist as separate buildings &mdash; but there's no road connecting them, no pricing system, and no way to collect money. You own a toll booth, but drivers pass through for free because there's no mechanism to charge them. You own a warehouse, but buyers and sellers have to negotiate every deal by hand. FEN builds the roads, installs the cash registers, and connects everything into a functioning economic system.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What happens without FEN?</p>
+    <div class="answer">
+      <p>Without FEN or something like it, EVE Frontier's economy stays informal and inefficient. Players resort to out-of-game chat channels to negotiate trades, prices are arbitrary, gate owners have no incentive to maintain infrastructure, and the game's vision of player-driven civilization stalls. The theme of the hackathon &mdash; "A Toolkit for Civilization" &mdash; directly calls for solutions like FEN that provide the economic tools civilizations need to function.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: HOW IT WORKS -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 3</span>
+    <h2>How It Works</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is a "trade corridor"?</p>
+    <div class="answer">
+      <p>A trade corridor is the core concept in FEN. It is a single on-chain object that bundles together five components into one manageable economic unit:</p>
+      <ul>
+        <li><strong>Two Smart Gates</strong> &mdash; a source gate (entry point) and a destination gate (exit point), each with configurable toll pricing.</li>
+        <li><strong>Two Smart Storage Unit Depots</strong> &mdash; item exchange points where players swap one type of item for another at operator-defined ratios.</li>
+        <li><strong>One Treasury</strong> &mdash; a SUI token vault that accumulates all toll revenue and trading fees.</li>
+      </ul>
+      <p>The corridor operator configures all of these components and earns revenue whenever players use any part of the corridor. Everything is managed through a single owner capability token.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does a player use a trade corridor?</p>
+    <div class="answer">
+      <p>A typical journey through a corridor works like this:</p>
+      <ol>
+        <li>A trader approaches the source Smart Gate and pays the toll in SUI tokens.</li>
+        <li>The system issues them a <strong>JumpPermit</strong> &mdash; a digital pass that's valid for 5 days.</li>
+        <li>The trader uses the JumpPermit to travel through the gate to the destination system.</li>
+        <li>At the destination, they can visit a depot to exchange items (for example, trading Feldspar Crystals for Hydrated Sulfide Matrix at a 2:1 ratio).</li>
+        <li>Alternatively, they can use the corridor's liquidity pool to trade items for SUI tokens or vice versa, with automated pricing.</li>
+      </ol>
+      <p>All fees flow to the corridor's treasury, which the operator can withdraw from at any time.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What are the three states of a corridor?</p>
+    <div class="answer">
+      <p>Every corridor has a lifecycle with three states:</p>
+      <ul>
+        <li><strong>Inactive</strong> &mdash; The corridor has been created but is not yet open for business. The operator is still configuring it.</li>
+        <li><strong>Active</strong> &mdash; The corridor is live. Players can pay tolls, use gates, and trade at depots.</li>
+        <li><strong>Emergency</strong> &mdash; The operator has shut down the corridor, perhaps due to a security concern or market conditions. All trading is halted.</li>
+      </ul>
+      <p>Only the corridor owner (holder of the CorridorOwnerCap) can transition between these states.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">Can you walk through a concrete example?</p>
+    <div class="answer">
+      <p>Here is the live corridor deployed on Sui Testnet, called <strong>"Odyssey Express"</strong>:</p>
+      <ul>
+        <li><strong>Source Gate Toll:</strong> 0.0005 SUI &mdash; about half a thousandth of a SUI token to enter.</li>
+        <li><strong>Destination Gate Toll:</strong> 0.0003 SUI &mdash; a smaller fee to exit.</li>
+        <li><strong>Depot A:</strong> Trades Feldspar Crystals for Hydrated Sulfide Matrix at a 2:1 ratio with a 2.5% fee. So if you deposit 100 Feldspar Crystals, you receive 48.75 units of Hydrated Sulfide Matrix (50 minus the 2.5% fee).</li>
+        <li><strong>Depot B:</strong> Trades Printed Circuits for Reinforced Alloys at a 3:2 ratio with a 2% fee.</li>
+        <li><strong>AMM Pool:</strong> Feldspar Crystals paired with SUI. The pool was initialized with 0.01 SUI and 1,000 items, with a 1% trading fee.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: THE SMART CONTRACTS -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 4</span>
+    <h2>The Smart Contracts</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is a smart contract?</p>
+    <div class="answer">
+      <p>A smart contract is a program that lives on a blockchain and executes automatically when certain conditions are met. Unlike a traditional app that runs on someone's server (and can be changed or shut down by that person), a smart contract runs on a decentralized network. Once deployed, its rules are enforced by the blockchain itself. In FEN's case, smart contracts handle toll collection, item exchanges, pricing, and treasury management &mdash; all without a middleman.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How many smart contracts does FEN have, and what do they do?</p>
+    <div class="answer">
+      <p>FEN consists of <strong>six Move modules</strong> (smart contracts), totaling approximately 1,852 lines of code. Here is what each one does:</p>
+
+      <table>
+        <tr>
+          <th>Module</th>
+          <th>Lines</th>
+          <th>Purpose</th>
+        </tr>
+        <tr>
+          <td>Corridor</td>
+          <td>314</td>
+          <td>Creates and manages trade corridors. Links gates and depots together. Controls lifecycle states.</td>
+        </tr>
+        <tr>
+          <td>Toll Gate</td>
+          <td>240</td>
+          <td>Collects SUI tolls at gates. Supports surge pricing. Issues JumpPermits.</td>
+        </tr>
+        <tr>
+          <td>Depot</td>
+          <td>298</td>
+          <td>Handles item-for-item exchanges at operator-defined fixed ratios.</td>
+        </tr>
+        <tr>
+          <td>Treasury</td>
+          <td>156</td>
+          <td>Accumulates all SUI revenue. Allows partial or full withdrawal by owner.</td>
+        </tr>
+        <tr>
+          <td>Liquidity Pool</td>
+          <td>657</td>
+          <td>Automated market maker (AMM) for item-to-SUI trading with dynamic pricing.</td>
+        </tr>
+        <tr>
+          <td>DeepBook Adapter</td>
+          <td>187</td>
+          <td>Integrates with Sui's DeepBook v3 order book for advanced trading.</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does the Toll Gate work?</p>
+    <div class="answer">
+      <p>The Toll Gate module lets corridor operators charge SUI tokens for gate passage. The operator sets a base toll price, and can optionally enable <strong>surge pricing</strong> that adjusts the cost based on demand. The formula is:</p>
+      <span class="formula">effective_toll = base_toll &times; surge_numerator / 10,000</span>
+      <p>For example, if the base toll is 0.001 SUI and the surge numerator is 15,000 (meaning 150% or 1.5x), the effective toll is 0.0015 SUI. When a player pays the toll, they receive a <strong>JumpPermit</strong> &mdash; a non-transferable digital pass valid for 5 days. This permit is their proof of payment and their ticket to use the gate.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does the Depot work?</p>
+    <div class="answer">
+      <p>The Depot module enables item-for-item exchange at fixed ratios set by the operator. Think of it as a currency exchange booth at an airport. The operator defines which items are accepted (input), which items are given out (output), and the exchange ratio between them. The formula is:</p>
+      <span class="formula">output = (input_quantity &times; ratio_out / ratio_in) &minus; fee</span>
+      <p>Fees are capped at 50% to prevent predatory pricing. For instance, if the ratio is 2:1 (two input items for one output item) and the fee is 2.5%, depositing 200 input items yields 97.5 output items.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does the Treasury work?</p>
+    <div class="answer">
+      <p>The Treasury is the simplest module &mdash; it is a SUI token vault attached to each corridor. Every toll payment and every trading fee automatically flows into the treasury. The corridor owner can withdraw any amount at any time, either a partial withdrawal (take some, leave the rest) or a full withdrawal (empty the treasury). Only the holder of the CorridorOwnerCap can withdraw, ensuring that revenue is secure.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: THE AMM -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 5</span>
+    <h2>The AMM (Liquidity Pool)</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is an AMM?</p>
+    <div class="answer">
+      <p>AMM stands for <strong>Automated Market Maker</strong>. It is a system that lets people trade assets without needing a traditional buyer-seller match. Instead of waiting for someone who wants to buy exactly what you're selling, an AMM uses a pool of assets and a mathematical formula to calculate prices automatically. AMMs are one of the foundational innovations of decentralized finance (DeFi). FEN's liquidity pool is the <strong>first on-chain AMM ever built for EVE Frontier items</strong>.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does FEN's AMM work?</p>
+    <div class="answer">
+      <p>FEN uses the <strong>constant product</strong> formula, the same approach used by Uniswap (the world's largest decentralized exchange). The core idea is simple:</p>
+      <span class="formula">reserve_sui &times; reserve_items = k (a constant)</span>
+      <p>The pool holds two assets: SUI tokens and a specific game item. The product of these two reserves must always remain constant. When someone buys items with SUI, they add SUI to the pool and remove items, which makes items more expensive. When someone sells items for SUI, they add items and remove SUI, which makes items cheaper. The price adjusts automatically based on supply and demand.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What are the exact trading formulas?</p>
+    <div class="answer">
+      <p><strong>Buying items with SUI:</strong></p>
+      <span class="formula">output_items = (sui_after_fee &times; reserve_items) / (reserve_sui + sui_after_fee)</span>
+      <p><strong>Selling items for SUI:</strong></p>
+      <span class="formula">output_sui = (items_after_fee &times; reserve_sui) / (reserve_items + items_after_fee)</span>
+      <p>In both cases, a fee is deducted before the trade is calculated. This fee goes to the corridor's treasury. The "after_fee" value is the trade amount minus the percentage fee.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is slippage, and how does FEN handle it?</p>
+    <div class="answer">
+      <p><strong>Slippage</strong> is the difference between the price you expect and the price you actually get. In an AMM, larger trades cause more slippage because they move the reserves more. FEN includes full <strong>slippage protection</strong>: traders specify a minimum acceptable output, and the transaction is rejected if the actual output falls below that threshold. This prevents "sandwich attacks" where someone front-runs your trade to extract value.</p>
+      <p>FEN also calculates <strong>price impact</strong> for every trade, expressed in basis points (hundredths of a percent):</p>
+      <span class="formula">price_impact = (spot_price &minus; execution_price) / spot_price &times; 10,000 bps</span>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">Why is an AMM important for EVE Frontier?</p>
+    <div class="answer">
+      <p>Before FEN's AMM, there was no automated way to determine what any item in EVE Frontier was worth. Players had to guess or negotiate. The AMM solves this by creating a <strong>price oracle</strong> &mdash; the ratio of reserves in the pool tells everyone the current market price of any listed item. As more players trade, the prices become more accurate through natural market forces. This is the foundation that an entire in-game economy can be built upon.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: THE DASHBOARD -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 6</span>
+    <h2>The Dashboard</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is the FEN Dashboard?</p>
+    <div class="answer">
+      <p>The FEN Dashboard is a web application that provides a visual interface to the entire FEN system. It is built with <strong>Next.js 15</strong> and <strong>React 19</strong>, the latest versions of the most widely used web frameworks. The dashboard reads data directly from the Sui blockchain &mdash; there is zero mock data. Every number, every corridor, every transaction shown on the dashboard is a real blockchain query.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What can you do on the dashboard?</p>
+    <div class="answer">
+      <p>The dashboard provides eight distinct pages:</p>
+      <ol>
+        <li><strong>Home</strong> &mdash; Network-wide statistics: total corridors, trading volume, active users.</li>
+        <li><strong>Corridors</strong> &mdash; Browse all trade corridors. See their status, toll prices, and trading pairs.</li>
+        <li><strong>Corridor Detail</strong> &mdash; Deep-dive into a specific corridor with revenue analytics and surge pricing visualization.</li>
+        <li><strong>Trade</strong> &mdash; Find the best trade routes between items across multiple corridors.</li>
+        <li><strong>Swap</strong> &mdash; Use the AMM to trade items for SUI or SUI for items, with price impact preview.</li>
+        <li><strong>Operate</strong> &mdash; Management panel for corridor operators to adjust tolls, ratios, and fees.</li>
+        <li><strong>Activity</strong> &mdash; Activity explorer showing real-time on-chain events (tolls paid, trades executed).</li>
+        <li><strong>Rankings</strong> &mdash; Leaderboards for corridors and traders by volume and revenue.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What does the dashboard look like?</p>
+    <div class="answer">
+      <p>The dashboard uses a <strong>glassmorphism</strong> design language &mdash; semi-transparent panels with blur effects that create depth and visual hierarchy. The color scheme is <strong>true black (#000000)</strong> with white text and subtle glass-like overlays. Typography uses <strong>DM Sans</strong> for body text and <strong>JetBrains Mono</strong> for numerical data and code. The overall effect is sleek, futuristic, and appropriate for a space game's economic infrastructure.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does the dashboard connect to the blockchain?</p>
+    <div class="answer">
+      <p>The dashboard connects to players' Sui wallets and reads corridor data directly from on-chain objects. It also supports <strong>character discovery</strong> from a connected wallet &mdash; it reads the player's PlayerProfile and OwnerCap objects to identify their EVE Frontier character. Additionally, FEN includes a <strong>gas sponsorship</strong> endpoint (/api/sponsor) that can cover transaction fees for users, removing friction for new players who may not yet hold SUI tokens.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: DEPLOYMENT -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 7</span>
+    <h2>Deployment and Infrastructure</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">Where is FEN deployed?</p>
+    <div class="answer">
+      <p>FEN is deployed on the <strong>Sui Testnet</strong>, linked to the <strong>Utopia sandbox world</strong> within EVE Frontier. The Utopia sandbox is a testing environment where developers can interact with real game objects without affecting the main game world. The deployment is in the star system <strong>U45-74L</strong>.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What are the on-chain addresses?</p>
+    <div class="answer">
+      <table>
+        <tr>
+          <th>Object</th>
+          <th>Address (Sui Testnet)</th>
+        </tr>
+        <tr>
+          <td>Package (v4)</td>
+          <td style="font-family: monospace; font-size: 8pt; word-break: break-all;">0x4c2f4a85fdf9667aca3c877b71b112dd017dab2824c251b9291f407b033a441a</td>
+        </tr>
+        <tr>
+          <td>CorridorRegistry</td>
+          <td style="font-family: monospace; font-size: 8pt; word-break: break-all;">0x6cb994308037d32961623b5a198365155108b6c1dc2a36df4680bd4be2dea6d3</td>
+        </tr>
+      </table>
+      <p>The live corridor "Odyssey Express" connects real EVE Frontier assemblies deployed in the Utopia sandbox.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What EVE Frontier assemblies are connected?</p>
+    <div class="answer">
+      <p>FEN's live deployment connects to the following real game objects in the Utopia sandbox (System U45-74L):</p>
+      <ul>
+        <li><strong>Network Node</strong> (0x9bb4...6ce5) &mdash; 1,000 GJ capacity, powered by D1 Fuel. This is the base infrastructure that powers the other assemblies.</li>
+        <li><strong>Smart Gate (Heavy)</strong> (0xddca...c4) &mdash; The main interstellar gate for heavy traffic.</li>
+        <li><strong>Mini Gate</strong> (0x5721...dc) &mdash; A smaller gate for lighter traffic.</li>
+        <li><strong>SSU #1 (Mini Storage)</strong> (0x6ec2...1d) &mdash; First smart storage unit, used as a depot.</li>
+        <li><strong>SSU #2 (Storage)</strong> (0x0d98...c9) &mdash; Second smart storage unit, used as a depot.</li>
+      </ul>
+      <p>All of these are real, on-chain EVE Frontier assemblies owned by the SeventhOdyssey71 character.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What does "deploying to Stillness" mean?</p>
+    <div class="answer">
+      <p>Stillness is EVE Frontier's production environment (as opposed to the Utopia sandbox used for testing). The hackathon offers a <strong>+10% scoring bonus</strong> for projects that deploy to Stillness between April 1 and the judging date. This involves deploying the same smart contracts to the live game world and submitting the Object IDs to the EVE Frontier team. FEN is architecturally ready for this deployment.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 8: TECHNICAL DEEP DIVE -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 8</span>
+    <h2>Technical Deep Dive</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">How thoroughly is FEN tested?</p>
+    <div class="answer">
+      <p>FEN has <strong>117 tests, all passing</strong>. These tests cover every module, every function, and every edge case &mdash; including overflow protection, fee boundary conditions, zero-amount handling, unauthorized access attempts, and state transition validation. The test suite is one of the most comprehensive among hackathon entries. For context, the most test-heavy competitor (Industrial Auto OS) has 279 tests across a much larger codebase, while most projects have far fewer.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What is the "typed-witness pattern" and why does it matter?</p>
+    <div class="answer">
+      <p>The typed-witness pattern (using a type called <strong>FenAuth</strong>) is a security pattern in Move that controls who can call sensitive functions. Rather than checking addresses or roles, it requires callers to present a specific type that only authorized modules can create. This means FEN's modules can extend and compose with each other securely &mdash; a module can grant specific capabilities to another module without exposing its internals. The result is a system that is both extensible and secure: new features can be added without modifying existing contracts.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What are "dynamic fields" and how does FEN use them?</p>
+    <div class="answer">
+      <p>Dynamic fields are a Sui-specific feature that lets objects store additional data without changing their original structure. FEN uses dynamic fields to store all configuration (toll prices, exchange ratios, surge parameters, pool reserves) directly on corridor objects. This is powerful because it means the corridor's behavior can be fully reconfigured <strong>without redeploying the smart contracts</strong>. An operator can change their toll from 0.001 SUI to 0.002 SUI by updating a dynamic field, not by deploying new code.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What are Programmable Transaction Blocks (PTBs)?</p>
+    <div class="answer">
+      <p>PTBs are a Sui feature that lets multiple operations be bundled into a single atomic transaction. FEN is designed to take full advantage of this. For example, a trader can pay a toll, receive a JumpPermit, and execute a trade at a depot &mdash; all in one transaction. If any step fails, the entire transaction is rolled back. This is critical for user experience: instead of three separate transactions (each requiring wallet approval), the player confirms once and everything happens atomically.</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does FEN handle security?</p>
+    <div class="answer">
+      <p>FEN employs multiple layers of security:</p>
+      <ul>
+        <li><strong>Capability-based access control:</strong> Only the holder of a CorridorOwnerCap can modify a corridor. This token is non-copyable and tied to a specific corridor.</li>
+        <li><strong>Fee caps:</strong> Depot fees are hard-capped at 50% to prevent predatory configurations.</li>
+        <li><strong>Slippage protection:</strong> AMM trades include minimum output requirements to prevent value extraction.</li>
+        <li><strong>State validation:</strong> Operations are only allowed in appropriate corridor states (e.g., you cannot trade on an Emergency corridor).</li>
+        <li><strong>Overflow protection:</strong> All mathematical operations are checked for integer overflow, a common source of blockchain exploits.</li>
+        <li><strong>117 tests:</strong> Including dedicated security tests for unauthorized access, boundary conditions, and edge cases.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 9: COMPETITIVE LANDSCAPE -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 9</span>
+    <h2>Competitive Landscape</h2>
+  </div>
+
+  <div class="qa">
+    <p class="question">What other projects are competing in this hackathon?</p>
+    <div class="answer">
+      <p>The EVE Frontier x Sui 2026 Hackathon has attracted several strong competitors. Here are the most notable:</p>
+      <ul>
+        <li><strong>CradleOS</strong> &mdash; An ambitious project with 24 Move modules and a 3D starmap visualization. It aims to be a full operating system layer for EVE Frontier.</li>
+        <li><strong>SENTINEL</strong> &mdash; A Rust-based monitoring system using Server-Sent Events (SSE) for real-time alerts on game events.</li>
+        <li><strong>Void Exchange</strong> &mdash; A StableSwap AMM (a different AMM formula optimized for similarly-priced assets).</li>
+        <li><strong>Industrial Auto OS</strong> &mdash; The most test-heavy project with 279 tests, focused on industrial automation within the game.</li>
+        <li><strong>Changsha Team</strong> &mdash; A group submitting four separate projects, covering multiple hackathon tracks.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">How does FEN differentiate itself?</p>
+    <div class="answer">
+      <p>FEN's key differentiators are:</p>
+      <ol>
+        <li><strong>First on-chain AMM for EVE Frontier:</strong> No other project provides automated, constant-product market making for game items. This is a genuinely novel contribution to the ecosystem.</li>
+        <li><strong>Composable architecture:</strong> The typed-witness pattern and dynamic fields mean FEN can be extended by other developers without modification. It is infrastructure others can build on.</li>
+        <li><strong>End-to-end completeness:</strong> FEN is not just smart contracts. It includes a full dashboard with 8 pages, real blockchain data, gas sponsorship, and character discovery. The experience is complete from contract to UI.</li>
+        <li><strong>Real deployment:</strong> FEN is not a demo. It is deployed on Sui Testnet with real EVE Frontier assemblies, real corridors, and real transactions.</li>
+        <li><strong>Production-quality testing:</strong> 117 tests covering security, edge cases, and every module function.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="question">What are the six key innovations in FEN?</p>
+    <div class="answer">
+      <ul>
+        <li><strong>First on-chain AMM for EVE Frontier items</strong> &mdash; Brings automated price discovery to the game for the first time.</li>
+        <li><strong>Extension without modification</strong> &mdash; The typed-witness (FenAuth) pattern allows secure composability. Other developers can build on FEN without touching its code.</li>
+        <li><strong>Dynamic field configuration</strong> &mdash; All corridor settings are stored as dynamic fields, so operators can reconfigure without redeploying contracts.</li>
+        <li><strong>Composable PTBs</strong> &mdash; Toll payment and trade execution can happen in a single atomic transaction, dramatically improving UX.</li>
+        <li><strong>100% real blockchain data dashboard</strong> &mdash; Zero mock data. Every number on the dashboard comes from an actual Sui RPC query.</li>
+        <li><strong>Gas sponsorship for frictionless UX</strong> &mdash; New players can interact with FEN even before they hold SUI tokens, lowering the barrier to entry.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 10: ONE-PAGE SUMMARY -->
+<!-- ============================================================ -->
+<div class="page-break">
+  <div class="section-header">
+    <span class="section-num">Section 10</span>
+    <h2>One-Page Summary</h2>
+  </div>
+
+  <div class="summary-box">
+    <h3>Frontier Exchange Network (FEN)</h3>
+    <p><strong>What it is:</strong> Trade infrastructure for EVE Frontier &mdash; a blockchain space game on Sui. FEN connects Smart Gates and Smart Storage Units into "trade corridors" that operators can monetize and traders can use.</p>
+  </div>
+
+  <div class="summary-box" style="margin-top: 1em;">
+    <h3>The Problem</h3>
+    <p>EVE Frontier has game objects but no native economy. Players cannot charge tolls, exchange items, discover prices, or track revenue. FEN fills all four gaps.</p>
+  </div>
+
+  <div class="summary-box" style="margin-top: 1em;">
+    <h3>The Solution: 6 Smart Contract Modules</h3>
+    <ul>
+      <li><strong>Corridor</strong> &mdash; Creates and manages trade corridors (2 gates + 2 depots + treasury)</li>
+      <li><strong>Toll Gate</strong> &mdash; SUI toll collection with surge pricing and 5-day JumpPermits</li>
+      <li><strong>Depot</strong> &mdash; Item-for-item exchange at fixed ratios with configurable fees</li>
+      <li><strong>Treasury</strong> &mdash; SUI accumulation and withdrawal for corridor operators</li>
+      <li><strong>Liquidity Pool</strong> &mdash; First on-chain AMM for EVE Frontier (constant-product x*y=k)</li>
+      <li><strong>DeepBook Adapter</strong> &mdash; Integration with Sui's DeepBook v3 order book</li>
+    </ul>
+  </div>
+
+  <div class="summary-box" style="margin-top: 1em;">
+    <h3>By the Numbers</h3>
+    <table>
+      <tr><td style="font-weight: 700; width: 40%;">Smart Contract Modules</td><td>6</td></tr>
+      <tr><td style="font-weight: 700;">Total Lines of Move Code</td><td>~1,852</td></tr>
+      <tr><td style="font-weight: 700;">Tests (all passing)</td><td>117</td></tr>
+      <tr><td style="font-weight: 700;">Dashboard Pages</td><td>8</td></tr>
+      <tr><td style="font-weight: 700;">Mock Data in Dashboard</td><td>Zero</td></tr>
+      <tr><td style="font-weight: 700;">Deployment</td><td>Sui Testnet, Package v4</td></tr>
+      <tr><td style="font-weight: 700;">Live Corridor</td><td>Odyssey Express</td></tr>
+      <tr><td style="font-weight: 700;">EVE Assemblies Connected</td><td>5 (Node, 2 Gates, 2 SSUs)</td></tr>
+    </table>
+  </div>
+
+  <div class="summary-box" style="margin-top: 1em;">
+    <h3>Key Innovations</h3>
+    <ol>
+      <li>First on-chain AMM for EVE Frontier items</li>
+      <li>Extension without modification (typed-witness pattern)</li>
+      <li>Dynamic field configuration (no redeployment needed)</li>
+      <li>Composable PTBs (toll + trade in one transaction)</li>
+      <li>100% real blockchain data dashboard</li>
+      <li>Gas sponsorship for frictionless UX</li>
+    </ol>
+  </div>
+
+  <hr>
+
+  <p style="text-align: center; font-size: 10pt; color: #444; margin-top: 1.5em;">
+    <strong>Builder:</strong> SeventhOdyssey71 &nbsp;&bull;&nbsp;
+    <strong>Hackathon:</strong> EVE Frontier x Sui 2026 &nbsp;&bull;&nbsp;
+    <strong>Track:</strong> External Tools &nbsp;&bull;&nbsp;
+    <strong>Theme:</strong> "A Toolkit for Civilization"
+  </p>
+
+  <div class="doc-footer">
+    Frontier Exchange Network (FEN) &mdash; Technical Q&A Document &mdash; March 2026<br>
+    Built for the EVE Frontier x Sui 2026 Hackathon ($80,000 Prize Pool)
+  </div>
+</div>
+
+</body>
+</html>
