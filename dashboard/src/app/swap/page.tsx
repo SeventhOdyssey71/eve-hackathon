@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { PoolConfig } from "@/lib/types";
+import { SkeletonSwapPanel } from "@/components/ui/Skeleton";
 
 interface PoolOption {
   corridorId: string;
@@ -192,9 +193,7 @@ export default function SwapPage() {
       </div>
 
       {isLoading || poolsLoading ? (
-        <div className="card flex items-center justify-center py-20">
-          <div className="animate-pulse text-eve-text-dim text-sm">Loading pools...</div>
-        </div>
+        <SkeletonSwapPanel />
       ) : realPools.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
           <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">

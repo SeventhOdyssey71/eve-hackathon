@@ -5,6 +5,7 @@ import { useCorridors } from "@/hooks/use-corridors";
 import { formatSui, formatNumber, abbreviateAddress, explorerUrl } from "@/lib/utils";
 import { Trophy, TrendingUp, Zap, ArrowRightLeft, Crown, Medal } from "lucide-react";
 import Link from "next/link";
+import { SkeletonStatsGrid, SkeletonTable } from "@/components/ui/Skeleton";
 
 const RANK_COLORS = ["text-eve-yellow", "text-eve-text", "text-eve-orange", "text-eve-text-dim", "text-eve-muted"];
 const RANK_BADGES = [
@@ -49,9 +50,8 @@ export default function RankingsPage() {
     return (
       <div className="space-y-6 max-w-[1440px]">
         <h1 className="text-2xl font-semibold tracking-tight">Rankings</h1>
-        <div className="card flex items-center justify-center py-20">
-          <div className="animate-pulse text-eve-text-dim text-sm">Loading rankings...</div>
-        </div>
+        <SkeletonStatsGrid />
+        <SkeletonTable rows={4} />
       </div>
     );
   }

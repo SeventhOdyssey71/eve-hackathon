@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useActivity } from "@/hooks/use-corridors";
 import { formatSui, timeAgo, abbreviateAddress, explorerUrl } from "@/lib/utils";
-import { Activity, ExternalLink, Filter, Zap, ArrowRightLeft, Shield, Settings, Droplets } from "lucide-react";
+import { Activity, ExternalLink, Filter, Zap, ArrowRightLeft, Shield, Settings, Droplets, Loader2 } from "lucide-react";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 import Link from "next/link";
 
 const EVENT_TYPE_CONFIG: Record<string, { label: string; color: string; icon: typeof Zap }> = {
@@ -60,9 +61,7 @@ export default function ActivityPage() {
 
       {/* Events table */}
       {isLoading ? (
-        <div className="card flex items-center justify-center py-20">
-          <div className="animate-pulse text-eve-text-dim text-sm">Loading events...</div>
-        </div>
+        <SkeletonTable rows={6} />
       ) : filtered.length === 0 ? (
         <div className="card flex flex-col items-center justify-center py-20 text-center">
           <Activity className="w-10 h-10 text-eve-muted mb-3" />
