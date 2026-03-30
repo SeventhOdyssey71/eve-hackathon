@@ -139,18 +139,31 @@
 
 /* ── Sui dapp-kit: button styling only ── */
 /* Style the connect/connected button to match dark theme. Leave dialog/modal default. */
-.wallet-connect-wrap button {
+.wallet-connect-wrap button,
+.wallet-connect-wrap button *,
+.wallet-connect-wrap button span,
+.wallet-connect-wrap button svg {
   background: rgba(255, 255, 255, 0.04) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.75rem !important;
   color: #ffffff !important;
+  fill: #ffffff !important;
   font-family: var(--font-dm-sans), 'DM Sans', sans-serif !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
-  padding: 0.5rem 1rem !important;
   transition: all 0.2s ease !important;
   box-shadow: none !important;
   cursor: pointer !important;
+}
+.wallet-connect-wrap > div > button {
+  padding: 0.5rem 1rem !important;
+}
+.wallet-connect-wrap button span,
+.wallet-connect-wrap button svg {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
 }
 .wallet-connect-wrap button:hover {
   background: rgba(255, 255, 255, 0.08) !important;
