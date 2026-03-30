@@ -197,7 +197,11 @@
   border-color: rgba(255, 255, 255, 0.08) !important;
   margin: 0.25rem 0 !important;
 }
-/* Inner spans */
-[data-radix-popper-content-wrapper] span {
-  color: #e0e0e0 !important;
+/* Force white on ALL text inside dropdown */
+[data-radix-popper-content-wrapper] *,
+[data-radix-popper-content-wrapper] span,
+[data-radix-popper-content-wrapper] div,
+[data-radix-popper-content-wrapper] button span,
+[data-radix-popper-content-wrapper] [role="menuitem"] * {
+  color: #fff !important;
 }
