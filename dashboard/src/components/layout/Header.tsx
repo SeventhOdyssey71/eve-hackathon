@@ -58,10 +58,11 @@ export function Header() {
           </a>
         )}
 
-        <ConnectButton
-          connectText="Connect Wallet"
-          className="btn-primary"
-        />
+        <div className="wallet-connect-wrap">
+          <ConnectButton
+            connectText="Connect Wallet"
+          />
+        </div>
       </div>
     </header>
   );
