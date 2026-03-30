@@ -136,3 +136,110 @@
 .glass-hover:hover {
   @apply bg-white/[0.06] border-white/[0.1];
 }
+
+/* ── Sui dapp-kit wallet button overrides ── */
+[data-dapp-kit] button,
+.wkit-button,
+[class*="ConnectButton"] > button,
+div[data-dapp-kit] > button {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.75rem !important;
+  color: #e0e0e0 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1.125rem !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  line-height: 1.4 !important;
+}
+
+[data-dapp-kit] button:hover,
+.wkit-button:hover,
+[class*="ConnectButton"] > button:hover,
+div[data-dapp-kit] > button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+/* Connected state — subtle green dot style */
+[data-dapp-kit] [data-connect-button] button[data-state="connected"],
+[data-dapp-kit] button[aria-expanded] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.75rem !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #a0a0a0 !important;
+}
+
+/* Dropdown menu styling */
+[data-dapp-kit] [role="menu"],
+[data-dapp-kit] [data-radix-popper-content-wrapper] {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+  padding: 0.25rem !important;
+}
+
+[data-dapp-kit] [role="menuitem"],
+[data-dapp-kit] [role="menu"] button {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0.5rem !important;
+  color: #c0c0c0 !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.8125rem !important;
+  padding: 0.5rem 0.75rem !important;
+  transition: background 0.15s ease !important;
+}
+
+[data-dapp-kit] [role="menuitem"]:hover,
+[data-dapp-kit] [role="menu"] button:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+/* Modal/dialog styling */
+[data-dapp-kit] [role="dialog"],
+[data-dapp-kit] [data-overlay] + div {
+  background: #0a0a0a !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6) !important;
+  color: #e0e0e0 !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+[data-dapp-kit] [role="dialog"] h2,
+[data-dapp-kit] [role="dialog"] h3 {
+  color: #ffffff !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+/* Wallet list items in connect dialog */
+[data-dapp-kit] [role="dialog"] button,
+[data-dapp-kit] [role="dialog"] li button {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.75rem !important;
+  color: #d0d0d0 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-dapp-kit] [role="dialog"] button:hover,
+[data-dapp-kit] [role="dialog"] li button:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+/* Overlay backdrop */
+[data-dapp-kit] [data-overlay] {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(4px) !important;
+}
