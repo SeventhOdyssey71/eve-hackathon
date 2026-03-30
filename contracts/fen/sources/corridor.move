@@ -9,7 +9,10 @@
 #[allow(lint(self_transfer))]
 module fen::corridor;
 
-use sui::{clock::Clock, dynamic_field as df, event, table::{Self, Table}};
+use sui::clock::Clock;
+use sui::dynamic_field as df;
+use sui::event;
+use sui::table::{Self, Table};
 
 // === Errors ===
 #[error(code = 0)]
@@ -38,7 +41,7 @@ public struct CorridorRegistry has key {
 }
 
 /// Lightweight lookup record stored in the registry table.
-public struct CorridorInfo has store, drop {
+public struct CorridorInfo has drop, store {
     name: vector<u8>,
     owner: address,
     status: u8,
@@ -137,11 +140,16 @@ public fun register_corridor(
     };
 
     // Record in registry
-    registry.corridors.add(corridor_id, CorridorInfo {
-        name: copy name,
-        owner: sender,
-        status: STATUS_INACTIVE,
-    });
+    registry
+        .corridors
+        .add(
+            corridor_id,
+            CorridorInfo {
+                name: copy name,
+                owner: sender,
+                status: STATUS_INACTIVE,
+            },
+        );
     registry.corridor_count = registry.corridor_count + 1;
 
     // Mint owner cap
@@ -268,20 +276,35 @@ public(package) fun record_trade(corridor: &mut Corridor, fee_amount: u64, clock
 
 // === View Functions ===
 public fun name(corridor: &Corridor): vector<u8> { corridor.name }
+
 public fun owner(corridor: &Corridor): address { corridor.owner }
+
 public fun fee_recipient(corridor: &Corridor): address { corridor.fee_recipient }
+
 public fun status(corridor: &Corridor): u8 { corridor.status }
+
 public fun is_active(corridor: &Corridor): bool { corridor.status == STATUS_ACTIVE }
+
 public fun is_emergency(corridor: &Corridor): bool { corridor.status == STATUS_EMERGENCY }
+
 public fun total_jumps(corridor: &Corridor): u64 { corridor.total_jumps }
+
 public fun total_trades(corridor: &Corridor): u64 { corridor.total_trades }
+
 public fun total_toll_revenue(corridor: &Corridor): u64 { corridor.total_toll_revenue }
+
 public fun total_trade_revenue(corridor: &Corridor): u64 { corridor.total_trade_revenue }
+
 public fun source_gate_id(corridor: &Corridor): ID { corridor.source_gate_id }
+
 public fun dest_gate_id(corridor: &Corridor): ID { corridor.dest_gate_id }
+
 public fun depot_a_id(corridor: &Corridor): ID { corridor.depot_a_id }
+
 public fun depot_b_id(corridor: &Corridor): ID { corridor.depot_b_id }
+
 public fun corridor_count(registry: &CorridorRegistry): u64 { registry.corridor_count }
+
 public fun corridor_id(cap: &CorridorOwnerCap): ID { cap.corridor_id }
 
 // === Dynamic Field Helpers (for toll_gate / depot to store config on Corridor) ===
@@ -294,15 +317,25 @@ public(package) fun borrow_df<K: copy + drop + store, V: store>(corridor: &Corri
     df::borrow(&corridor.id, key)
 }
 
-public(package) fun borrow_df_mut<K: copy + drop + store, V: store>(corridor: &mut Corridor, key: K): &mut V {
+public(package) fun borrow_df_mut<K: copy + drop + store, V: store>(
+    corridor: &mut Corridor,
+    key: K,
+): &mut V {
     df::borrow_mut(&mut corridor.id, key)
 }
 
-public(package) fun add_df<K: copy + drop + store, V: store>(corridor: &mut Corridor, key: K, value: V) {
+public(package) fun add_df<K: copy + drop + store, V: store>(
+    corridor: &mut Corridor,
+    key: K,
+    value: V,
+) {
     df::add(&mut corridor.id, key, value);
 }
 
-public(package) fun remove_df<K: copy + drop + store, V: store>(corridor: &mut Corridor, key: K): V {
+public(package) fun remove_df<K: copy + drop + store, V: store>(
+    corridor: &mut Corridor,
+    key: K,
+): V {
     df::remove(&mut corridor.id, key)
 }
 

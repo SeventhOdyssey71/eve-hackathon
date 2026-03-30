@@ -4,7 +4,7 @@ import { Transaction } from "@mysten/sui/transactions";
 
 const FEN_PACKAGE_ID =
   process.env.NEXT_PUBLIC_FEN_PACKAGE_ID ||
-  "0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a";
+  "0x4c2f4a85fdf9667aca3c877b71b112dd017dab2824c251b9291f407b033a441a";
 
 const MAX_GAS_BUDGET = 50_000_000; // 0.05 SUI max sponsored gas
 

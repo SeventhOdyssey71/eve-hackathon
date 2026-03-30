@@ -28,9 +28,10 @@ FEN includes the **first on-chain AMM (automated market maker) for EVE Frontier 
 
 | Component | ID |
 |-----------|-----|
-| Package | `0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a` |
-| CorridorRegistry | `0x2ec8e3f9be1952852fd6879005a580c705f25b57ad3077f9d369b355e807aa4c` |
-| BalanceManagerRegistry | `0x11e2fcfbada5497ce9f28b1b76b806bbdab1bbf9134ed06f00bd32f32647ea3b` |
+| Package (v4 Utopia) | `0x4c2f4a85fdf9667aca3c877b71b112dd017dab2824c251b9291f407b033a441a` |
+| CorridorRegistry | `0x6cb994308037d32961623b5a198365155108b6c1dc2a36df4680bd4be2dea6d3` |
+| BalanceManagerRegistry | `0x50495a9ed1e8205ecb5d9c05730ac3a398d1a2099f546445de14f232321f0df4` |
+| Live Corridor: Odyssey Express | `0x6f5c71b7714bf2ef663685e6fa08aaa011885fa793062203bb65e177e74d8eb1` |
 
 See [DEPLOYMENT.md](contracts/fen/DEPLOYMENT.md) for all object IDs.
 
@@ -102,6 +103,9 @@ Next.js 15 + React 19 + Tailwind CSS + `@mysten/dapp-kit` + `@mysten/sui` v2
 | `/trade` | Trade route discovery with sortable table and cost calculator |
 | `/swap` | AMM swap interface: sell items for SUI or buy items with SUI, real-time price impact, slippage protection |
 | `/operate` | Operator panel: register corridors, configure tolls/depots, emergency controls |
+| `/activity` | Real-time event explorer with type filters (jumps, trades, swaps, config changes) |
+| `/rankings` | Leaderboards — top corridors by revenue, jumps, trades |
+| `/authorize` | Extension setup — authorize FEN on gates and SSUs (3-step borrow pattern) |
 
 ### Key Features
 
@@ -124,8 +128,8 @@ Environment variables (defaults point to deployed testnet package):
 ```
 NEXT_PUBLIC_SUI_NETWORK=testnet
 NEXT_PUBLIC_EVE_TENANT=utopia
-NEXT_PUBLIC_FEN_PACKAGE_ID=0xff753421606a061120d2fcd75df86fdb0682d78051e6e365ec2af81f0f56620a
-NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0x2ec8e3f9be1952852fd6879005a580c705f25b57ad3077f9d369b355e807aa4c
+NEXT_PUBLIC_FEN_PACKAGE_ID=0x4c2f4a85fdf9667aca3c877b71b112dd017dab2824c251b9291f407b033a441a
+NEXT_PUBLIC_CORRIDOR_REGISTRY_ID=0x6cb994308037d32961623b5a198365155108b6c1dc2a36df4680bd4be2dea6d3
 ```
 
 For external-browser usage, the official docs use tenant routing with query params such as `?tenant=utopia` or `?tenant=stillness`. The dashboard now defaults to `utopia` and preserves tenant selection in the header.
@@ -216,9 +220,9 @@ FEN is trade infrastructure that other mods build on top of. It directly address
 | Component | Details |
 |-----------|---------|
 | Smart Contracts | 6 Move modules (corridor, toll_gate, depot, treasury, liquidity_pool, deepbook_adapter) |
-| Test Suite | 117 Move tests, all passing |
+| Test Suite | 87 Move tests, all passing |
 | Dashboard | Next.js 15 with 8 routes: home, corridors, corridor detail, trade, swap, operate, activity, rankings |
-| Deployment | Sui testnet with live "Helios Express" corridor (tolls + depots + AMM pool configured) |
+| Deployment | Sui testnet with live "Odyssey Express" corridor (real EVE assemblies, tolls + depots + AMM pool, working swaps) |
 | Wallet Integration | @mysten/dapp-kit with OwnerCap auto-discovery and assembly picker |
 | On-chain Data | Event-based corridor discovery, dynamic field reading for configs, real-time activity feed |
 
