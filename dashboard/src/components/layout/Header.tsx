@@ -45,19 +45,6 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-3">
-        {account && (
-          <a
-            href={explorerUrl("address", account.address, network)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] rounded-xl text-[12px] hover:bg-white/[0.06] transition-all duration-200 border border-white/[0.06] group"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-eve-green" />
-            <span className="text-eve-text-dim font-medium font-mono">{abbreviateAddress(account.address)}</span>
-            <ExternalLink className="w-3 h-3 text-eve-muted group-hover:text-eve-orange transition-colors" />
-          </a>
-        )}
-
         <div className="wallet-connect-wrap">
           <ConnectButton
             connectText="Connect Wallet"
