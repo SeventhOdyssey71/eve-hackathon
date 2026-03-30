@@ -137,57 +137,64 @@
   @apply bg-white/[0.06] border-white/[0.1];
 }
 
-/* ── Sui dapp-kit: button styling only ── */
-/* Style the connect/connected button to match dark theme. Leave dialog/modal default. */
-.wallet-connect-wrap button,
-.wallet-connect-wrap button *,
-.wallet-connect-wrap button span,
-.wallet-connect-wrap button svg {
+/* ── Sui dapp-kit wallet overrides ── */
+
+/* Main button */
+.wallet-connect-wrap button {
   background: rgba(255, 255, 255, 0.04) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.75rem !important;
-  color: #ffffff !important;
-  fill: #ffffff !important;
-  font-family: var(--font-dm-sans), 'DM Sans', sans-serif !important;
+  color: #fff !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
-  transition: all 0.2s ease !important;
-  box-shadow: none !important;
-  cursor: pointer !important;
-}
-.wallet-connect-wrap > div > button {
   padding: 0.5rem 1rem !important;
-}
-.wallet-connect-wrap button span,
-.wallet-connect-wrap button svg {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
 }
 .wallet-connect-wrap button:hover {
   background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.14) !important;
-  color: #ffffff !important;
 }
+/* Force white on ALL text/icon inside the button */
+.wallet-connect-wrap button span { color: #fff !important; }
+.wallet-connect-wrap button svg { color: #fff !important; fill: #fff !important; }
 
-/* ── Dropdown menu (disconnect/switch) ── */
+/* ── Dropdown (disconnect/switch account) ── */
+[data-radix-popper-content-wrapper] [role="menu"],
 [data-radix-popper-content-wrapper] > div {
   background: #111 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 0.75rem !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
-  padding: 0.25rem !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7) !important;
+  padding: 0.375rem !important;
+  overflow: hidden !important;
 }
+/* Menu items */
+[data-radix-popper-content-wrapper] [role="menuitem"],
 [data-radix-popper-content-wrapper] button {
+  color: #e0e0e0 !important;
   background: transparent !important;
   border: none !important;
   border-radius: 0.5rem !important;
-  color: #b0b0b0 !important;
   font-size: 0.8125rem !important;
   padding: 0.5rem 0.75rem !important;
 }
+[data-radix-popper-content-wrapper] [role="menuitem"]:hover,
 [data-radix-popper-content-wrapper] button:hover {
   background: rgba(255, 255, 255, 0.06) !important;
   color: #fff !important;
+}
+/* Checkmark / icons inside menu */
+[data-radix-popper-content-wrapper] svg {
+  color: #e8622b !important;
+  fill: none !important;
+}
+/* Divider/separator */
+[data-radix-popper-content-wrapper] [role="separator"],
+[data-radix-popper-content-wrapper] hr {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  margin: 0.25rem 0 !important;
+}
+/* Inner spans */
+[data-radix-popper-content-wrapper] span {
+  color: #e0e0e0 !important;
 }
