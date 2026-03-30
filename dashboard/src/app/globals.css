@@ -154,8 +154,11 @@
 .wallet-connect-wrap button:hover {
   background: rgba(255, 255, 255, 0.08) !important;
 }
-/* Force white on ALL text/icon inside the button */
-.wallet-connect-wrap button span { color: #fff !important; }
+/* Force white on ALL text/icon inside the button — override inline styles */
+.wallet-connect-wrap [data-dapp-kit] *,
+.wallet-connect-wrap button *,
+.wallet-connect-wrap button span,
+.wallet-connect-wrap button div,
 .wallet-connect-wrap button svg { color: #fff !important; fill: #fff !important; }
 
 /* ── Dropdown (disconnect/switch account) ── */
