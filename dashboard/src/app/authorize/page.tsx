@@ -1,63 +1,111 @@
 "use client";
 
-import { useSignAndExecuteTransaction } from "@mysten/dapp-kit";
-import { useState } from "react";
+import { useSuiClient, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
+import { useCurrentAccount } from "@mysten/dapp-kit";
+import { useState, useEffect } from "react";
 import { useNetworkVariable } from "@/lib/sui-config";
+import { useCharacter } from "@/hooks/use-character";
 import {
   buildAuthorizeStorageUnitExtension,
   buildAuthorizeGateExtension,
 } from "@/lib/transactions";
+import { Shield, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { abbreviateAddress, explorerUrl } from "@/lib/utils";
+import { SkeletonTable } from "@/components/ui/Skeleton";
 
-// Your real EVE Frontier assembly mappings
-const ASSEMBLIES = {
-  CHARACTER_ID: "0x5362c8c1181a6d1e24cf0ae2dcc75fc61235ee87053d6a5fdf39a4983c5b1ca7",
-  storageUnits: [
-    {
-      name: "SSU #1 (Mini Storage)",
-      id: "0x6ec2c373149a906c1edb55842ab7b50f3521dea6a35d36474d7eefa53020af1d",
-      ownerCapId: "0x438b493c1e2e27e491143dd9439f3bf72eb170b50031be3227e7024abac60791",
-    },
-    {
-      name: "SSU #2 (Storage)",
-      id: "0x0d98beb332114779cf8f61566c67aa6736911e2b786fdd82d9e28d16f23e0bc9",
-      ownerCapId: "0xd7acd14c4b01f5ce39c354f5503c6302db6710090bd116449622fbd5a120c8fe",
-    },
-  ],
-  gates: [
-    {
-      name: "Smart Gate (Heavy)",
-      id: "0xddca10d9fa4358261b3b41ca634e1ea79cf08414a5f22293e13db0e7521cb0c4",
-      ownerCapId: "0xb41e52635ada3604e72fd8a8dff35a2fe0bfcf34b33371c679611089bc1044d7",
-    },
-    {
-      name: "Mini Gate",
-      id: "0x5721cd58478525521eca980f861174d97a169c285cb23758306439afa93d82dc",
-      ownerCapId: "0x71685d0971da10c662c65dcc5a4a831efb479563656abf6cd6ac163a5dff624c",
-    },
-  ],
-};
+interface DiscoveredAssembly {
+  id: string;
+  ownerCapId: string;
+  type: "gate" | "storage_unit";
+  label: string;
+}
+
+const WORLD_PKG = "0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75";
 
 export default function AuthorizePage() {
   const packageId = useNetworkVariable("fenPackageId");
+  const account = useCurrentAccount();
+  const client = useSuiClient();
+  const { characterId, isLoading: charLoading } = useCharacter();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+
+  const [assemblies, setAssemblies] = useState<DiscoveredAssembly[]>([]);
+  const [discovering, setDiscovering] = useState(false);
   const [status, setStatus] = useState<Record<string, string>>({});
 
-  function authorize(type: "ssu" | "gate", index: number) {
-    const assembly = type === "ssu" ? ASSEMBLIES.storageUnits[index] : ASSEMBLIES.gates[index];
-    const key = `${type}-${index}`;
+  // Discover OwnerCaps owned by the character
+  useEffect(() => {
+    if (!characterId || !client) return;
+
+    let cancelled = false;
+    setDiscovering(true);
+
+    async function discover() {
+      const found: DiscoveredAssembly[] = [];
+
+      try {
+        // Query objects owned by the character address
+        const result = await client.getOwnedObjects({
+          owner: characterId!,
+          options: { showType: true, showContent: true },
+          limit: 50,
+        });
+
+        for (const obj of result.data) {
+          if (!obj.data?.type || !obj.data?.content) continue;
+          const t = obj.data.type;
+          const fields = "fields" in obj.data.content ? (obj.data.content.fields as Record<string, unknown>) : null;
+          if (!fields) continue;
+
+          const authId = fields.authorized_object_id as string;
+          if (!authId) continue;
+
+          if (t.includes("OwnerCap") && t.includes("gate::Gate")) {
+            found.push({
+              id: authId,
+              ownerCapId: obj.data.objectId,
+              type: "gate",
+              label: `Gate ${abbreviateAddress(authId)}`,
+            });
+          } else if (t.includes("OwnerCap") && t.includes("storage_unit::StorageUnit")) {
+            found.push({
+              id: authId,
+              ownerCapId: obj.data.objectId,
+              type: "storage_unit",
+              label: `SSU ${abbreviateAddress(authId)}`,
+            });
+          }
+        }
+      } catch {
+        // Discovery failed silently
+      }
+
+      if (!cancelled) {
+        setAssemblies(found);
+        setDiscovering(false);
+      }
+    }
+
+    discover();
+    return () => { cancelled = true; };
+  }, [characterId, client]);
+
+  function authorize(assembly: DiscoveredAssembly) {
+    if (!characterId) return;
+    const key = assembly.id;
     setStatus((s) => ({ ...s, [key]: "signing..." }));
 
     const tx =
-      type === "ssu"
+      assembly.type === "storage_unit"
         ? buildAuthorizeStorageUnitExtension({
             fenPackageId: packageId,
-            characterId: ASSEMBLIES.CHARACTER_ID,
+            characterId,
             storageUnitId: assembly.id,
             ownerCapId: assembly.ownerCapId,
           })
         : buildAuthorizeGateExtension({
             fenPackageId: packageId,
-            characterId: ASSEMBLIES.CHARACTER_ID,
+            characterId,
             gateId: assembly.id,
             ownerCapId: assembly.ownerCapId,
           });
@@ -66,85 +114,221 @@ export default function AuthorizePage() {
       { transaction: tx },
       {
         onSuccess: (result) => {
-          setStatus((s) => ({ ...s, [key]: `done! ${result.digest.slice(0, 12)}...` }));
+          setStatus((s) => ({ ...s, [key]: `success:${result.digest.slice(0, 12)}...` }));
         },
         onError: (error) => {
-          setStatus((s) => ({ ...s, [key]: `error: ${error.message.slice(0, 60)}` }));
+          const msg = error.message || "Failed";
+          // Already authorized
+          if (msg.includes("already") || msg.includes("swap_or_fill")) {
+            setStatus((s) => ({ ...s, [key]: "already_authorized" }));
+          } else {
+            setStatus((s) => ({ ...s, [key]: `error:${msg.slice(0, 50)}` }));
+          }
         },
       }
     );
   }
 
+  function authorizeAll() {
+    for (const a of assemblies) {
+      authorize(a);
+    }
+  }
+
+  const gates = assemblies.filter((a) => a.type === "gate");
+  const ssus = assemblies.filter((a) => a.type === "storage_unit");
+
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <h1 className="text-2xl font-bold mb-2">Authorize FEN Extension</h1>
-      <p className="text-white/50 mb-8 text-sm">
-        Each assembly must authorize FEN before swaps can execute. Click each button below.
-        You must be connected with your EVE Frontier wallet.
-      </p>
-
-      <div className="space-y-6">
+    <div className="space-y-6 max-w-[1440px]">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold mb-3 text-white/70">Storage Units (for swaps &amp; trades)</h2>
-          <div className="space-y-3">
-            {ASSEMBLIES.storageUnits.map((su, i) => (
-              <div key={su.id} className="flex items-center gap-4 p-4 border border-white/10 rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium">{su.name}</div>
-                  <div className="text-xs text-white/30 font-mono">{su.id.slice(0, 20)}...</div>
-                </div>
-                <button
-                  onClick={() => authorize("ssu", i)}
-                  disabled={status[`ssu-${i}`]?.startsWith("signing")}
-                  className="px-4 py-2 bg-white text-black font-semibold rounded hover:bg-white/90 disabled:opacity-50 text-sm"
-                >
-                  Authorize FEN
-                </button>
-                {status[`ssu-${i}`] && (
-                  <span className={`text-xs ${status[`ssu-${i}`].startsWith("error") ? "text-red-400" : "text-green-400"}`}>
-                    {status[`ssu-${i}`]}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Extension Setup</h1>
+          <p className="text-sm text-eve-text-dim mt-1">
+            Authorize FEN on your assemblies to enable trading and gate jumps
+          </p>
         </div>
+        {assemblies.length > 0 && (
+          <button onClick={authorizeAll} className="btn-primary text-sm">
+            Authorize All
+          </button>
+        )}
+      </div>
 
-        <div>
-          <h2 className="text-lg font-semibold mb-3 text-white/70">Gates (for toll jumps)</h2>
-          <div className="space-y-3">
-            {ASSEMBLIES.gates.map((gate, i) => (
-              <div key={gate.id} className="flex items-center gap-4 p-4 border border-white/10 rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium">{gate.name}</div>
-                  <div className="text-xs text-white/30 font-mono">{gate.id.slice(0, 20)}...</div>
-                </div>
-                <button
-                  onClick={() => authorize("gate", i)}
-                  disabled={status[`gate-${i}`]?.startsWith("signing")}
-                  className="px-4 py-2 bg-white text-black font-semibold rounded hover:bg-white/90 disabled:opacity-50 text-sm"
-                >
-                  Authorize FEN
-                </button>
-                {status[`gate-${i}`] && (
-                  <span className={`text-xs ${status[`gate-${i}`].startsWith("error") ? "text-red-400" : "text-green-400"}`}>
-                    {status[`gate-${i}`]}
-                  </span>
-                )}
+      {/* Connection status */}
+      <div className="card p-5">
+        <h3 className="section-title mb-4">Connection Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${account ? "bg-eve-green" : "bg-eve-muted"}`} />
+            <div>
+              <div className="text-xs text-eve-muted">Wallet</div>
+              <div className="text-sm font-medium">
+                {account ? abbreviateAddress(account.address) : "Not connected"}
               </div>
-            ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${characterId ? "bg-eve-green" : charLoading ? "bg-eve-yellow animate-pulse" : "bg-eve-muted"}`} />
+            <div>
+              <div className="text-xs text-eve-muted">Character</div>
+              <div className="text-sm font-medium">
+                {charLoading ? "Discovering..." : characterId ? abbreviateAddress(characterId) : "Not found"}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${assemblies.length > 0 ? "bg-eve-green" : discovering ? "bg-eve-yellow animate-pulse" : "bg-eve-muted"}`} />
+            <div>
+              <div className="text-xs text-eve-muted">Assemblies</div>
+              <div className="text-sm font-medium">
+                {discovering ? "Scanning..." : `${gates.length} gates, ${ssus.length} SSUs`}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 p-4 border border-white/10 rounded-lg bg-white/[0.02]">
-        <p className="text-xs text-white/40">
-          This page calls <code className="text-white/60">character::borrow_owner_cap</code> →{" "}
-          <code className="text-white/60">storage_unit::authorize_extension&lt;FenAuth&gt;</code> →{" "}
-          <code className="text-white/60">character::return_owner_cap</code> in a single PTB.
-          After authorization, FEN can deposit/withdraw items from your assemblies for trading.
+      {/* No wallet */}
+      {!account && (
+        <div className="card p-12 text-center">
+          <Shield className="w-10 h-10 text-eve-muted mx-auto mb-3" />
+          <p className="text-eve-text-dim">Connect your EVE Frontier wallet to discover your assemblies</p>
+        </div>
+      )}
+
+      {/* No character */}
+      {account && !charLoading && !characterId && (
+        <div className="card p-12 text-center">
+          <AlertCircle className="w-10 h-10 text-eve-yellow mx-auto mb-3" />
+          <p className="text-eve-text font-medium mb-1">No EVE Frontier Character Found</p>
+          <p className="text-sm text-eve-text-dim max-w-md mx-auto">
+            This wallet doesn&apos;t have an EVE Frontier PlayerProfile. Connect with the wallet you use in the EVE Frontier game.
+          </p>
+        </div>
+      )}
+
+      {/* Loading */}
+      {(charLoading || discovering) && <SkeletonTable rows={4} />}
+
+      {/* Assembly list */}
+      {!discovering && assemblies.length > 0 && (
+        <>
+          {/* Storage Units */}
+          {ssus.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-eve-text-dim mb-3 uppercase tracking-wider">
+                Storage Units ({ssus.length})
+              </h2>
+              <div className="space-y-3">
+                {ssus.map((su) => (
+                  <AssemblyRow key={su.id} assembly={su} status={status[su.id]} onAuthorize={() => authorize(su)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Gates */}
+          {gates.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-eve-text-dim mb-3 uppercase tracking-wider">
+                Gates ({gates.length})
+              </h2>
+              <div className="space-y-3">
+                {gates.map((g) => (
+                  <AssemblyRow key={g.id} assembly={g} status={status[g.id]} onAuthorize={() => authorize(g)} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* No assemblies found */}
+      {!discovering && characterId && assemblies.length === 0 && (
+        <div className="card p-12 text-center">
+          <Shield className="w-10 h-10 text-eve-muted mx-auto mb-3" />
+          <p className="text-eve-text font-medium mb-1">No Assemblies Found</p>
+          <p className="text-sm text-eve-text-dim max-w-md mx-auto">
+            Your character doesn&apos;t own any gates or storage units. Deploy assemblies in EVE Frontier first.
+          </p>
+        </div>
+      )}
+
+      {/* Explainer */}
+      <div className="card p-5 bg-white/[0.01]">
+        <h3 className="text-xs font-semibold text-eve-muted uppercase tracking-wider mb-2">How it works</h3>
+        <p className="text-xs text-eve-text-dim leading-relaxed">
+          Each EVE Frontier assembly (gate or storage unit) must authorize FEN&apos;s extension before
+          trading can occur. This is a one-time setup per assembly. The transaction borrows your
+          OwnerCap from your Character, calls <code className="text-eve-text bg-white/[0.04] px-1 rounded">authorize_extension&lt;FenAuth&gt;</code>,
+          then returns the cap — all in a single atomic transaction.
         </p>
       </div>
+    </div>
+  );
+}
+
+function AssemblyRow({
+  assembly,
+  status,
+  onAuthorize,
+}: {
+  assembly: DiscoveredAssembly;
+  status?: string;
+  onAuthorize: () => void;
+}) {
+  const isSuccess = status?.startsWith("success:") || status === "already_authorized";
+  const isError = status?.startsWith("error:");
+  const isSigning = status === "signing...";
+
+  return (
+    <div className="card p-4 flex items-center gap-4">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+        assembly.type === "gate" ? "bg-eve-orange/10" : "bg-eve-blue/10"
+      }`}>
+        <Shield className={`w-5 h-5 ${assembly.type === "gate" ? "text-eve-orange" : "text-eve-blue"}`} />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm">{assembly.label}</div>
+        <div className="flex items-center gap-2 text-[11px] text-eve-muted mt-0.5">
+          <span className="font-mono">{assembly.id.slice(0, 20)}...</span>
+          <a
+            href={explorerUrl("object", assembly.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-eve-orange hover:underline"
+          >
+            Explorer
+          </a>
+        </div>
+      </div>
+
+      {isSuccess ? (
+        <div className="flex items-center gap-1.5 text-eve-green text-xs font-medium">
+          <CheckCircle className="w-4 h-4" />
+          {status === "already_authorized" ? "Already authorized" : "Authorized"}
+        </div>
+      ) : isError ? (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-red-400 max-w-[200px] truncate">{status?.slice(6)}</span>
+          <button onClick={onAuthorize} className="btn-ghost text-xs px-3 py-1.5">
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onAuthorize}
+          disabled={isSigning}
+          className="btn-primary text-xs px-4 py-2 disabled:opacity-50"
+        >
+          {isSigning ? (
+            <span className="flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Signing...</span>
+          ) : (
+            "Authorize FEN"
+          )}
+        </button>
+      )}
     </div>
   );
 }
