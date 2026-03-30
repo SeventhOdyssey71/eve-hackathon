@@ -137,13 +137,8 @@
   @apply bg-white/[0.06] border-white/[0.1];
 }
 
-/* ── Sui dapp-kit: hide default ConnectButton when connected ── */
-/* We use our own address pill in Header.tsx, so hide dapp-kit's duplicate */
-.wallet-connect-wrap [data-dapp-kit] {
-  display: contents;
-}
-
-/* ── Connect button (disconnected state) ── */
+/* ── Sui dapp-kit: button styling only ── */
+/* Style the connect/connected button to match dark theme. Leave dialog/modal default. */
 .wallet-connect-wrap button {
   background: rgba(255, 255, 255, 0.04) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -163,99 +158,23 @@
   color: #ffffff !important;
 }
 
-/* ── Connected state button (address dropdown trigger) ── */
-.wallet-connect-wrap button[aria-expanded],
-.wallet-connect-wrap button[data-state] {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 0.75rem !important;
-  font-family: var(--font-jetbrains), 'JetBrains Mono', monospace !important;
-  font-size: 0.75rem !important;
-  color: #888 !important;
-  padding: 0.4rem 0.75rem !important;
-}
-
-/* ── Dropdown menu ── */
-[data-radix-popper-content-wrapper] > div,
-[data-dapp-kit] [role="menu"] {
-  background: #0a0a0a !important;
+/* ── Dropdown menu (disconnect/switch) ── */
+[data-radix-popper-content-wrapper] > div {
+  background: #111 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.75rem !important;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
   padding: 0.25rem !important;
-  color: #c0c0c0 !important;
-  font-family: var(--font-dm-sans), 'DM Sans', sans-serif !important;
 }
-[data-dapp-kit] [role="menuitem"],
-[data-dapp-kit] [role="menu"] button {
+[data-radix-popper-content-wrapper] button {
   background: transparent !important;
   border: none !important;
   border-radius: 0.5rem !important;
   color: #b0b0b0 !important;
   font-size: 0.8125rem !important;
   padding: 0.5rem 0.75rem !important;
-  transition: background 0.15s ease !important;
 }
-[data-dapp-kit] [role="menuitem"]:hover,
-[data-dapp-kit] [role="menu"] button:hover {
+[data-radix-popper-content-wrapper] button:hover {
   background: rgba(255, 255, 255, 0.06) !important;
   color: #fff !important;
-}
-
-/* ── Connect wallet modal / dialog ── */
-[data-dapp-kit] [role="dialog"] {
-  background: #0a0a0a !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 1.125rem !important;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7) !important;
-  color: #e0e0e0 !important;
-  font-family: var(--font-dm-sans), 'DM Sans', sans-serif !important;
-}
-[data-dapp-kit] [role="dialog"] * {
-  color: inherit !important;
-  border-color: rgba(255, 255, 255, 0.06) !important;
-}
-[data-dapp-kit] [role="dialog"] h2,
-[data-dapp-kit] [role="dialog"] h3 {
-  color: #fff !important;
-  font-weight: 600 !important;
-}
-/* Close button in dialog */
-[data-dapp-kit] [role="dialog"] button[aria-label="Close"] {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 0.5rem !important;
-  color: #999 !important;
-}
-[data-dapp-kit] [role="dialog"] button[aria-label="Close"]:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #fff !important;
-}
-/* Wallet list items */
-[data-dapp-kit] [role="dialog"] ul {
-  background: transparent !important;
-}
-[data-dapp-kit] [role="dialog"] li,
-[data-dapp-kit] [role="dialog"] li > button {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 0.75rem !important;
-  color: #d0d0d0 !important;
-  transition: all 0.15s ease !important;
-}
-[data-dapp-kit] [role="dialog"] li:hover,
-[data-dapp-kit] [role="dialog"] li > button:hover {
-  background: rgba(255, 255, 255, 0.07) !important;
-  border-color: rgba(232, 98, 43, 0.3) !important;
-  color: #fff !important;
-}
-/* "What is a wallet" info panel */
-[data-dapp-kit] [role="dialog"] > div > div:last-child {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border-left: 1px solid rgba(255, 255, 255, 0.06) !important;
-}
-/* Overlay backdrop */
-[data-dapp-kit] [data-overlay] {
-  background: rgba(0, 0, 0, 0.75) !important;
-  backdrop-filter: blur(6px) !important;
 }
