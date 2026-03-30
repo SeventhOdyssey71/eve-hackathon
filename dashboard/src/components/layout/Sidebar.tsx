@@ -25,7 +25,7 @@ export function Sidebar() {
     <>
       <div className="p-6 pb-5">
         <Link href="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-          <img src="/FEN-Logo.png" alt="FEN" className="w-9 h-9 rounded-xl object-contain" />
+          <img src="/FEN-Logo.png" alt="FEN" className="w-7 h-7 rounded-lg object-contain" />
           <div>
             <div className="text-sm font-bold text-eve-text tracking-wide">FEN</div>
             <div className="text-[10px] text-eve-muted font-medium">Frontier Exchange Network</div>

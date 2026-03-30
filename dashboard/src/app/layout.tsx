@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   title: "FEN — Frontier Exchange Network",
   description: "Player-owned trade corridors for EVE Frontier on Sui. Register corridors, configure tolls, trade items, and swap via on-chain AMM pools.",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/Frontier Exchange Network.png",
   },
   openGraph: {
     title: "FEN — Frontier Exchange Network",
