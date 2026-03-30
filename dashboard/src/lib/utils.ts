@@ -14,7 +14,11 @@ export function formatSui(mist: number): string {
   const sui = mist / 1_000_000_000;
   if (sui >= 1_000_000) return `${(sui / 1_000_000).toFixed(1)}M SUI`;
   if (sui >= 1_000) return `${(sui / 1_000).toFixed(1)}K SUI`;
-  return `${sui.toFixed(2)} SUI`;
+  if (sui >= 1) return `${sui.toFixed(2)} SUI`;
+  if (sui >= 0.01) return `${sui.toFixed(3)} SUI`;
+  if (sui >= 0.001) return `${sui.toFixed(4)} SUI`;
+  if (sui > 0) return `${sui.toFixed(6)} SUI`;
+  return `0.00 SUI`;
 }
 
 export function formatNumber(n: number): string {

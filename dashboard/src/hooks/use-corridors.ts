@@ -619,7 +619,7 @@ export function useActivity(corridorId?: string): {
         actor: (parsed.actor as string) || (parsed.payer as string) || (parsed.trader as string) || "",
         description: formatEventDescription(eventName, parsed),
         timestamp: Number(event.timestampMs || Date.now()),
-        value: parsed.amount_paid ? Number(parsed.amount_paid) : parsed.fee_collected ? Number(parsed.fee_collected) : undefined,
+        value: parsed.sui_amount ? Number(parsed.sui_amount) : parsed.amount_paid ? Number(parsed.amount_paid) : parsed.fee_collected ? Number(parsed.fee_collected) : parsed.sui_delta ? Number(parsed.sui_delta) : undefined,
       });
     }
   }
@@ -655,10 +655,19 @@ function formatEventDescription(eventName: string, parsed: Record<string, unknow
       return "AMM pool activated";
     case "PoolDeactivatedEvent":
       return "AMM pool deactivated";
-    case "SwapEvent":
-      return `AMM swap: ${Number(parsed.direction) === 0 ? "bought items" : "sold items"}`;
-    case "LiquidityChangedEvent":
-      return `Liquidity ${parsed.is_add ? "added" : "removed"}`;
+    case "SwapEvent": {
+      const dir = Number(parsed.direction) === 0 ? "bought" : "sold";
+      const qty = parsed.item_quantity ? Number(parsed.item_quantity) : 0;
+      return `AMM swap: ${dir} ${qty} items`;
+    }
+    case "LiquidityChangedEvent": {
+      const suiDelta = parsed.sui_delta ? (Number(parsed.sui_delta) / 1e9).toFixed(2) : "?";
+      return `Liquidity ${parsed.is_add ? "added" : "removed"}: ${suiDelta} SUI`;
+    }
+    case "ItemWithdrawnEvent":
+      return `Item withdrawn from storage unit`;
+    case "ItemDepositedEvent":
+      return `Item deposited to storage unit`;
     default:
       return eventName.replace(/Event$/, "").replace(/([A-Z])/g, " $1").trim();
   }
