@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useCorridors, useDashboardStats, useActivity, useChartData } from "@/hooks/use-corridors";
 import { StatsGrid } from "@/components/dashboard/StatsGrid";
 import { TopCorridors } from "@/components/dashboard/TopCorridors";
@@ -11,7 +12,8 @@ export default function DashboardPage() {
   const { stats, isLoading } = useDashboardStats();
   const { corridors, isLoading: corridorsLoading } = useCorridors();
   const { events } = useActivity();
-  const { data: chartData, isLoading: chartLoading } = useChartData();
+  const [chartRange, setChartRange] = useState("24h");
+  const { data: chartData, eventLog, isLoading: chartLoading } = useChartData(chartRange);
 
   return (
     <div className="space-y-8 max-w-[1440px]">
@@ -24,7 +26,17 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          {isLoading || chartLoading ? <SkeletonChart /> : <VolumeChart data={chartData} />}
+          {isLoading && chartData.length === 0 ? (
+            <SkeletonChart />
+          ) : (
+            <VolumeChart
+              data={chartData}
+              eventLog={eventLog}
+              range={chartRange}
+              onRangeChange={setChartRange}
+              isLoading={chartLoading}
+            />
+          )}
         </div>
         <div>
           {isLoading ? <SkeletonActivityList /> : <RecentActivity events={events.slice(0, 6)} />}

@@ -734,30 +734,26 @@ export function useTradeRoutes(): {
   return { routes, isLoading };
 }
 
-export function useChartData() {
-  const [chartData, setChartData] = useState(
-    Array.from({ length: 24 }, (_, i) => ({
-      hour: `${String(i).padStart(2, "0")}:00`,
-      jumps: 0,
-      trades: 0,
-      revenue: 0,
-    }))
-  );
+export function useChartData(range: string = "24h") {
+  const [chartData, setChartData] = useState<Array<{ hour: string; jumps: number; trades: number; revenue: number }>>([]);
+  const [eventLog, setEventLog] = useState<Array<{ type: string; timestamp: number; suiAmount: number; items: number; trader: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/stats")
+    setIsLoading(true);
+    fetch(`/api/stats?range=${range}`)
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled && data.chartData && Array.isArray(data.chartData)) {
-          setChartData(data.chartData);
+        if (!cancelled) {
+          if (data.chartData && Array.isArray(data.chartData)) setChartData(data.chartData);
+          if (data.eventLog && Array.isArray(data.eventLog)) setEventLog(data.eventLog);
         }
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [range]);
 
-  return { data: chartData, isLoading };
+  return { data: chartData, eventLog, isLoading };
 }

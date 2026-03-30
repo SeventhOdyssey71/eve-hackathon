@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
+import { useState } from "react";
 import { useCorridor, useActivity, useChartData, usePoolConfigs } from "@/hooks/use-corridors";
 import { formatSui, formatNumber, formatPercent, abbreviateAddress, timeAgo, statusBg, explorerUrl } from "@/lib/utils";
 import { ArrowRight, ArrowLeft, Shield, Zap, Package, AlertCircle, Droplets, ExternalLink } from "lucide-react";
@@ -12,7 +13,8 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const { corridor, isLoading } = useCorridor(id);
   const { events } = useActivity(id);
-  const { data: chartData } = useChartData();
+  const [chartRange, setChartRange] = useState("24h");
+  const { data: chartData, eventLog, isLoading: chartLoading } = useChartData(chartRange);
   const { poolA, poolB } = usePoolConfigs(
     corridor?.id || "",
     corridor?.depotA.id || "",
@@ -370,7 +372,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
       {/* Chart + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <VolumeChart data={chartData} />
+          <VolumeChart data={chartData} eventLog={eventLog} range={chartRange} onRangeChange={setChartRange} isLoading={chartLoading} />
         </div>
         <div className="card p-5">
           <h3 className="section-title mb-4">Corridor Activity</h3>

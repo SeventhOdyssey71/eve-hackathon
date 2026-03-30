@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 
 const NETWORK =
@@ -10,8 +10,30 @@ const client = new SuiJsonRpcClient({
 });
 const PACKAGE_ID = process.env.NEXT_PUBLIC_FEN_PACKAGE_ID || "0x4c2f4a85fdf9667aca3c877b71b112dd017dab2824c251b9291f407b033a441a";
 
-export async function GET() {
+const RANGE_MS: Record<string, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "3d": 3 * 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000,
+  "all": Infinity,
+};
+
+function bucketConfig(range: string): { count: number; labelFn: (d: Date) => string } {
+  switch (range) {
+    case "24h": return { count: 24, labelFn: (d) => `${d.getHours()}:00` };
+    case "3d": return { count: 36, labelFn: (d) => `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:00` };
+    case "7d": return { count: 28, labelFn: (d) => `${d.getMonth() + 1}/${d.getDate()} ${d.getHours() < 12 ? "AM" : "PM"}` };
+    case "30d": return { count: 30, labelFn: (d) => `${d.getMonth() + 1}/${d.getDate()}` };
+    default: return { count: 30, labelFn: (d) => `${d.getMonth() + 1}/${d.getDate()}` };
+  }
+}
+
+export async function GET(request: NextRequest) {
   try {
+    const range = request.nextUrl.searchParams.get("range") || "24h";
+    const rangeMs = RANGE_MS[range] || RANGE_MS["24h"];
+    const { count: bucketCount, labelFn } = bucketConfig(range);
+
     // Get all corridor IDs from CorridorCreatedEvent
     const eventsResult = await client.queryEvents({
       query: { MoveEventType: `${PACKAGE_ID}::corridor::CorridorCreatedEvent` },
@@ -26,7 +48,6 @@ export async function GET() {
       if (id && !corridorIds.includes(id)) corridorIds.push(id);
     }
 
-    // Fetch all corridor objects
     let totalJumps = 0;
     let totalTrades = 0;
     let totalTollRevenue = 0;
@@ -51,7 +72,7 @@ export async function GET() {
       }
     }
 
-    // Count recent events for 24h activity (toll payments, trades, swaps)
+    // Fetch events
     const [tollEvents, tradeEvents, swapEvents] = await Promise.all([
       client.queryEvents({
         query: { MoveEventType: `${PACKAGE_ID}::toll_gate::TollPaidEvent` },
@@ -72,46 +93,62 @@ export async function GET() {
 
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
+    const allEvents = [...tollEvents.data, ...tradeEvents.data, ...swapEvents.data];
 
     const jumps24h = tollEvents.data.filter((e) => now - Number(e.timestampMs || 0) < day).length;
     const trades24h = tradeEvents.data.filter((e) => now - Number(e.timestampMs || 0) < day).length;
     const swaps24h = swapEvents.data.filter((e) => now - Number(e.timestampMs || 0) < day).length;
 
-    // Build hourly chart data from events
-    const hourlyData = Array.from({ length: 24 }, (_, i) => {
-      const hourStart = now - (23 - i) * 60 * 60 * 1000;
-      const hourEnd = hourStart + 60 * 60 * 1000;
-      const hour = new Date(hourStart).getHours();
+    // Build bucketed chart data
+    const totalMs = rangeMs === Infinity ? (now - Math.min(...allEvents.map(e => Number(e.timestampMs || now)), now)) || day : rangeMs;
+    const bucketMs = totalMs / bucketCount;
 
-      const jumpsInHour = tollEvents.data.filter((e) => {
+    const chartData = Array.from({ length: bucketCount }, (_, i) => {
+      const bucketStart = now - (bucketCount - 1 - i) * bucketMs;
+      const bucketEnd = bucketStart + bucketMs;
+      const label = labelFn(new Date(bucketStart));
+
+      const jumpsInBucket = tollEvents.data.filter((e) => {
         const t = Number(e.timestampMs || 0);
-        return t >= hourStart && t < hourEnd;
+        return t >= bucketStart && t < bucketEnd;
       }).length;
 
-      const tradesInHour = tradeEvents.data.filter((e) => {
+      const tradesInBucket = tradeEvents.data.filter((e) => {
         const t = Number(e.timestampMs || 0);
-        return t >= hourStart && t < hourEnd;
+        return t >= bucketStart && t < bucketEnd;
       }).length + swapEvents.data.filter((e) => {
         const t = Number(e.timestampMs || 0);
-        return t >= hourStart && t < hourEnd;
+        return t >= bucketStart && t < bucketEnd;
       }).length;
 
-      let revenueInHour = 0;
-      for (const e of tollEvents.data) {
+      let revenueInBucket = 0;
+      for (const e of [...tollEvents.data, ...swapEvents.data]) {
         const t = Number(e.timestampMs || 0);
-        if (t >= hourStart && t < hourEnd) {
+        if (t >= bucketStart && t < bucketEnd) {
           const data = e.parsedJson as Record<string, unknown>;
-          revenueInHour += Number(data?.amount || 0);
+          revenueInBucket += Number(data?.amount_paid || data?.sui_amount || 0);
         }
       }
 
-      return {
-        hour: `${hour}:00`,
-        jumps: jumpsInHour,
-        trades: tradesInHour,
-        revenue: revenueInHour,
-      };
+      return { hour: label, jumps: jumpsInBucket, trades: tradesInBucket, revenue: revenueInBucket };
     });
+
+    // Build event log for extended view
+    const eventLog = allEvents
+      .filter((e) => rangeMs === Infinity || now - Number(e.timestampMs || 0) < rangeMs)
+      .sort((a, b) => Number(b.timestampMs || 0) - Number(a.timestampMs || 0))
+      .slice(0, 50)
+      .map((e) => {
+        const data = e.parsedJson as Record<string, unknown>;
+        const type = e.type.split("::").pop() || "";
+        return {
+          type,
+          timestamp: Number(e.timestampMs || 0),
+          suiAmount: Number(data?.amount_paid || data?.sui_amount || data?.fee_collected || 0),
+          items: Number(data?.item_quantity || data?.input_quantity || 0),
+          trader: (data?.payer || data?.trader || "") as string,
+        };
+      });
 
     return NextResponse.json({
       totalCorridors: corridorIds.length,
@@ -124,7 +161,9 @@ export async function GET() {
       jumps24h,
       trades24h,
       swaps24h,
-      chartData: hourlyData,
+      chartData,
+      eventLog,
+      range,
     });
   } catch (error) {
     return NextResponse.json(
