@@ -743,6 +743,7 @@ export function useChartData() {
       revenue: 0,
     }))
   );
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -753,9 +754,10 @@ export function useChartData() {
           setChartData(data.chartData);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
-  return { data: chartData, isLoading: false };
+  return { data: chartData, isLoading };
 }

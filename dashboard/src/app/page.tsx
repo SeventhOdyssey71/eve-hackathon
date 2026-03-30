@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const { stats, isLoading } = useDashboardStats();
   const { corridors, isLoading: corridorsLoading } = useCorridors();
   const { events } = useActivity();
-  const { data: chartData } = useChartData();
+  const { data: chartData, isLoading: chartLoading } = useChartData();
 
   return (
     <div className="space-y-8 max-w-[1440px]">
@@ -24,7 +24,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          {isLoading ? <SkeletonChart /> : <VolumeChart data={chartData} />}
+          {isLoading || chartLoading ? <SkeletonChart /> : <VolumeChart data={chartData} />}
         </div>
         <div>
           {isLoading ? <SkeletonActivityList /> : <RecentActivity events={events.slice(0, 6)} />}
