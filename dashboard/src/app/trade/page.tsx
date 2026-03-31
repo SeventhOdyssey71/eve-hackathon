@@ -34,7 +34,7 @@ export default function TradePage() {
     }
   });
 
-  const activeRoute = routes[selectedRoute] || routes[0];
+  const activeRoute = routes.length > 0 ? (routes[selectedRoute] || routes[0]) : null;
 
   // Calculate real estimated output based on depot ratio and fee
   const calcOutput = (route: typeof activeRoute, qty: number) => {

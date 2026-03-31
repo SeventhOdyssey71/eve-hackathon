@@ -62,6 +62,8 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
   }
 
   const totalRevenue = corridor.totalTollRevenue + corridor.totalTradeRevenue;
+  const activeDays = Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000));
+  const revenuePerDay = activeDays > 0 ? totalRevenue / activeDays : 0;
 
   return (
     <div className="space-y-8 max-w-[1440px]">
@@ -257,11 +259,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
               <div className="flex justify-between text-xs">
                 <span className="text-eve-muted">Revenue / Day</span>
                 <span className="text-eve-orange font-semibold">
-                  {formatSui(
-                    Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000)) > 0
-                      ? totalRevenue / Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000))
-                      : 0
-                  )}
+                  {formatSui(revenuePerDay)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
@@ -279,7 +277,7 @@ export default function CorridorDetailPage({ params }: { params: Promise<{ id: s
               <div className="flex justify-between text-xs">
                 <span className="text-eve-muted">Active Duration</span>
                 <span className="text-eve-text font-medium">
-                  {Math.max(1, Math.floor((Date.now() - corridor.createdAt) / 86400000))}d
+                  {activeDays}d
                 </span>
               </div>
             </div>

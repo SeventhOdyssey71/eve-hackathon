@@ -65,11 +65,11 @@ export default function OperatePage() {
     if (!selectedCorridor && corridors.length > 0) {
       // Prefer corridors the user owns
       const owned = corridors.find((c) => caps.has(c.id));
-      setSelectedCorridor(owned?.id || corridors[0].id);
+      setSelectedCorridor(owned?.id || corridors[0]?.id || "");
     }
   }, [corridors, caps, selectedCorridor]);
 
-  const corridor = corridors.find((c) => c.id === selectedCorridor) || corridors[0];
+  const corridor = corridors.find((c) => c.id === selectedCorridor) || corridors[0] || null;
   const ownerCapId = corridor ? caps.get(corridor.id) : undefined;
   const isOwner = !!ownerCapId;
   const totalRevenue = corridor ? corridor.totalTollRevenue + corridor.totalTradeRevenue : 0;

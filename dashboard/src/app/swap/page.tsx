@@ -166,6 +166,7 @@ export default function SwapPage() {
         const result = await signAndExecute({ transaction: tx });
         setTxDigest(result.digest);
         setTxStatus("success");
+        setInputAmount("");
       } catch (err) {
         setTxError(err instanceof Error ? err.message : "Swap failed");
         setTxStatus("error");

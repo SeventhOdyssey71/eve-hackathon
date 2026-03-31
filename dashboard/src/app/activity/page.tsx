@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useActivity } from "@/hooks/use-corridors";
 import { formatSui, timeAgo, abbreviateAddress, explorerUrl } from "@/lib/utils";
-import { Activity, ExternalLink, Filter, Zap, ArrowRightLeft, Shield, Settings, Droplets, Loader2 } from "lucide-react";
+import { Activity, ExternalLink, Filter, Zap, ArrowRightLeft, Shield, Settings, Droplets } from "lucide-react";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import Link from "next/link";
 
@@ -87,7 +87,7 @@ export default function ActivityPage() {
               {filtered.map((event) => {
                 const config = EVENT_TYPE_CONFIG[event.type] || EVENT_TYPE_CONFIG.jump;
                 const Icon = config.icon;
-                const txDigest = event.id.replace(/\d+$/, "");
+                const txDigest = event.id.replace(/-?\d+$/, "");
                 return (
                   <tr key={event.id} className="border-b border-white/[0.06]/40 hover:bg-white/[0.04]/40 transition-colors">
                     <td className="py-3 px-5">
