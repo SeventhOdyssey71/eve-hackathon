@@ -1386,3 +1386,105 @@ fun test_remove_all_liquidity() {
 
     scenario.end();
 }
+
+// ===== Security & Edge-Case Tests =====
+
+#[test]
+fun test_compute_output_zero_fee_exact() {
+    // With fee = 0, the full amount_in should participate
+    // Pool: 1000 reserve_in, 10_000_000 reserve_out, 100 amount_in, 0 fee
+    let (output, fee) = liquidity_pool::compute_output(1000, 10_000_000, 100, 0);
+    // amount_after_fee = 100 * 10000 / 10000 = 100
+    // output = (100 * 10_000_000) / (1000 + 100) = 1_000_000_000 / 1100 = 909_090
+    assert!(output == 909_090);
+    assert!(fee == 0);
+}
+
+#[test]
+fun test_compute_output_max_fee_half_consumed() {
+    // With fee = 5000 (50%), half the input is consumed by fees
+    let (output, fee) = liquidity_pool::compute_output(1000, 10_000_000, 100, 5000);
+    // amount_after_fee = 100 * 5000 / 10000 = 50
+    // output = (50 * 10_000_000) / (1000 + 50) = 500_000_000 / 1050 = 476_190
+    // fee = 100 * 5000 / 10000 = 50
+    assert!(output == 476_190);
+    assert!(fee == 50);
+}
+
+#[test]
+fun test_compute_output_small_amount_one_unit() {
+    // Very small input (1 unit) on a modest pool
+    let (output, fee) = liquidity_pool::compute_output(100, 10_000, 1, 0);
+    // output = (1 * 10000) / (100 + 1) = 10000 / 101 = 99
+    assert!(output == 99);
+    assert!(fee == 0);
+}
+
+#[test]
+fun test_compute_output_large_amount_near_reserve() {
+    // Input approaching the full reserve_in size
+    let (output, fee) = liquidity_pool::compute_output(100, 1_000_000, 99, 0);
+    // output = (99 * 1_000_000) / (100 + 99) = 99_000_000 / 199 = 497_487
+    assert!(output == 497_487);
+    assert!(fee == 0);
+    // This is nearly half the reserve_out — massive slippage
+}
+
+#[test]
+fun test_price_impact_small_trade_near_zero() {
+    // Very small trade on a large pool should have near-zero impact
+    let impact = liquidity_pool::price_impact_bps(1_000_000, 1_000_000_000, 1, 0);
+    // With reserves this large, 1 unit trade has negligible impact
+    // spot = 1e9 * 1e9 / 1e6 = 1e12
+    // output = (1 * 1e9) / (1e6 + 1) = 999
+    // exec = 999 * 1e9 = 999e9
+    // impact = (1e12 - 999e9) / 1e12 * 10000 = 1e9 / 1e12 * 10000 = 10
+    // Even on 1M reserves, 1 unit is small enough for ~10 bps
+    assert!(impact <= 10);
+}
+
+#[test]
+fun test_price_impact_large_trade_significant() {
+    // Very large trade (25% of reserve) should have significant impact
+    let impact = liquidity_pool::price_impact_bps(1000, 1_000_000, 250, 0);
+    // Spot: 1000 per unit
+    // output = (250 * 1M) / (1000 + 250) = 250M / 1250 = 200_000
+    // Exec: 200_000 / 250 = 800 per unit
+    // Impact: (1000 - 800) / 1000 = 20% = 2000 bps
+    assert!(impact == 2000);
+}
+
+#[test]
+fun test_spot_price_equal_reserves() {
+    // Equal SUI and items reserves — 1:1 price
+    let price = liquidity_pool::spot_price_sui_per_item(1_000_000_000, 1);
+    // (1e9 * 1e9) / 1 = 1e18
+    assert!(price == 1_000_000_000_000_000_000);
+
+    // 10 SUI : 10 items
+    let price2 = liquidity_pool::spot_price_sui_per_item(10_000_000_000, 10);
+    // (10e9 * 1e9) / 10 = 1e18
+    assert!(price2 == 1_000_000_000_000_000_000);
+}
+
+#[test, expected_failure(abort_code = liquidity_pool::EFeeTooHigh)]
+fun test_pool_fee_above_max_fails() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let su_id = object::id_from_address(DEPOT_A_ADDR);
+
+        let sui = coin::mint_for_testing<SUI>(1_000_000_000, scenario.ctx());
+        // fee = 5001 (above 50% max) — should fail
+        liquidity_pool::create_pool(&mut corridor, &owner_cap, su_id, ITEM_TYPE, 5001, sui, 100);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}

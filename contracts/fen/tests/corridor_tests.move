@@ -568,3 +568,302 @@ fun test_corridor_view_functions() {
 
     scenario.end();
 }
+
+// ===== Security & Edge-Case Tests =====
+
+#[test, expected_failure(abort_code = corridor::ENotOwner)]
+fun test_wrong_owner_cap_activate_fails() {
+    let other: address = @0xB;
+
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    // Register corridor by OWNER
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x1), object::id_from_address(@0x2),
+            object::id_from_address(@0x3), object::id_from_address(@0x4),
+            OWNER, b"Owner Corridor", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    // Register corridor by OTHER
+    scenario.next_tx(other);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x10), object::id_from_address(@0x20),
+            object::id_from_address(@0x30), object::id_from_address(@0x40),
+            other, b"Other Corridor", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    // OWNER tries to activate OTHER's corridor with OWNER's cap
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor_1 = scenario.take_shared<Corridor>();
+        let mut corridor_2 = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+
+        let cap_corridor_id = corridor::corridor_id(&owner_cap);
+
+        if (cap_corridor_id == object::id(&corridor_1)) {
+            corridor::activate_corridor(&mut corridor_2, &owner_cap, scenario.ctx());
+        } else {
+            corridor::activate_corridor(&mut corridor_1, &owner_cap, scenario.ctx());
+        };
+
+        ts::return_shared(corridor_1);
+        ts::return_shared(corridor_2);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_corridor_counters_initial_zero() {
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x1), object::id_from_address(@0x2),
+            object::id_from_address(@0x3), object::id_from_address(@0x4),
+            OWNER, b"Counter Test", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        assert!(corridor::total_jumps(&corridor) == 0);
+        assert!(corridor::total_trades(&corridor) == 0);
+        assert!(corridor::total_toll_revenue(&corridor) == 0);
+        assert!(corridor::total_trade_revenue(&corridor) == 0);
+        assert!(corridor::status(&corridor) == 0);
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_different_owners_register_corridors() {
+    let other: address = @0xB;
+
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    // OWNER registers first corridor
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x1), object::id_from_address(@0x2),
+            object::id_from_address(@0x3), object::id_from_address(@0x4),
+            OWNER, b"Alpha Route", &clk, scenario.ctx(),
+        );
+        assert!(corridor::corridor_count(&registry) == 1);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    // OTHER registers second corridor
+    scenario.next_tx(other);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x10), object::id_from_address(@0x20),
+            object::id_from_address(@0x30), object::id_from_address(@0x40),
+            other, b"Beta Route", &clk, scenario.ctx(),
+        );
+        assert!(corridor::corridor_count(&registry) == 2);
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_fee_recipient_different_from_owner() {
+    let fee_addr: address = @0xFEE;
+
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x1), object::id_from_address(@0x2),
+            object::id_from_address(@0x3), object::id_from_address(@0x4),
+            fee_addr, // fee_recipient != sender (OWNER)
+            b"Split Fee Corridor", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        assert!(corridor::owner(&corridor) == OWNER);
+        assert!(corridor::fee_recipient(&corridor) == fee_addr);
+        assert!(corridor::fee_recipient(&corridor) != corridor::owner(&corridor));
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_emergency_lock_from_inactive() {
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x1), object::id_from_address(@0x2),
+            object::id_from_address(@0x3), object::id_from_address(@0x4),
+            OWNER, b"Lock Inactive", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    // Corridor starts as INACTIVE, lock directly to EMERGENCY
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+
+        assert!(corridor::status(&corridor) == 0); // INACTIVE
+        corridor::emergency_lock(&mut corridor, &owner_cap, scenario.ctx());
+        assert!(corridor::status(&corridor) == 2); // EMERGENCY
+        assert!(corridor::is_emergency(&corridor));
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test, expected_failure(abort_code = corridor::ECorridorNotActive)]
+fun test_deactivate_emergency_fails() {
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(@0x1), object::id_from_address(@0x2),
+            object::id_from_address(@0x3), object::id_from_address(@0x4),
+            OWNER, b"Deactivate Emergency", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+
+        // Lock to emergency state
+        corridor::emergency_lock(&mut corridor, &owner_cap, scenario.ctx());
+        assert!(corridor::is_emergency(&corridor));
+
+        // Try to deactivate — should fail because deactivate requires ACTIVE status
+        corridor::deactivate_corridor(&mut corridor, &owner_cap, scenario.ctx());
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_register_preserves_gate_depot_ids() {
+    let mut scenario = ts::begin(OWNER);
+    {
+        corridor::init_for_testing(scenario.ctx());
+    };
+
+    let sg = @0xAA;
+    let dg = @0xBB;
+    let da = @0xCC;
+    let db = @0xDD;
+
+    scenario.next_tx(OWNER);
+    {
+        let mut registry = scenario.take_shared<CorridorRegistry>();
+        let clk = clock::create_for_testing(scenario.ctx());
+        corridor::register_corridor(
+            &mut registry,
+            object::id_from_address(sg),
+            object::id_from_address(dg),
+            object::id_from_address(da),
+            object::id_from_address(db),
+            OWNER, b"ID Preservation", &clk, scenario.ctx(),
+        );
+        clock::destroy_for_testing(clk);
+        ts::return_shared(registry);
+    };
+
+    scenario.next_tx(OWNER);
+    {
+        let corridor = scenario.take_shared<Corridor>();
+        assert!(corridor::source_gate_id(&corridor) == object::id_from_address(sg));
+        assert!(corridor::dest_gate_id(&corridor) == object::id_from_address(dg));
+        assert!(corridor::depot_a_id(&corridor) == object::id_from_address(da));
+        assert!(corridor::depot_b_id(&corridor) == object::id_from_address(db));
+        ts::return_shared(corridor);
+    };
+
+    scenario.end();
+}

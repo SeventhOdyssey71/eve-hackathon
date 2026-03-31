@@ -728,3 +728,163 @@ fun test_update_config_preserves_active_status() {
 
     scenario.end();
 }
+
+// ===== Security & Edge-Case Tests =====
+
+#[test]
+fun test_depot_config_update_new_values() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let depot_id = object::id_from_address(DEPOT_A);
+
+        // Initial config
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            100, 200, 1, 1, 50,
+        );
+        assert!(depot::depot_fee_bps(&corridor, depot_id) == 50);
+        let (ri, ro) = depot::depot_ratio(&corridor, depot_id);
+        assert!(ri == 1 && ro == 1);
+
+        // Update with completely different params
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            999, 888, 5, 7, 4999,
+        );
+        assert!(depot::depot_fee_bps(&corridor, depot_id) == 4999);
+        let (ri2, ro2) = depot::depot_ratio(&corridor, depot_id);
+        assert!(ri2 == 5 && ro2 == 7);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_depot_max_fee_boundary() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let depot_id = object::id_from_address(DEPOT_A);
+
+        // Exactly 5000 bps (50%) should succeed
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            10, 20, 1, 1, 5000,
+        );
+        assert!(depot::depot_fee_bps(&corridor, depot_id) == 5000);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test, expected_failure(abort_code = depot::EFeeTooHigh)]
+fun test_depot_fee_above_max_fails() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let depot_id = object::id_from_address(DEPOT_A);
+
+        // 5001 bps exceeds 50% max — should abort
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            10, 20, 1, 1, 5001,
+        );
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_depot_asymmetric_ratios() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let depot_id = object::id_from_address(DEPOT_A);
+
+        // Large ratio_in, small ratio_out (100:1 exchange)
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            100, 200, 100, 1, 0,
+        );
+        let (ri, ro) = depot::depot_ratio(&corridor, depot_id);
+        assert!(ri == 100 && ro == 1);
+
+        // Now reverse: small ratio_in, large ratio_out (1:100 exchange)
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            100, 200, 1, 100, 0,
+        );
+        let (ri2, ro2) = depot::depot_ratio(&corridor, depot_id);
+        assert!(ri2 == 1 && ro2 == 100);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_depot_deactivate_reactivate() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let depot_id = object::id_from_address(DEPOT_A);
+
+        depot::set_depot_config(
+            &mut corridor, &owner_cap, depot_id,
+            100, 200, 1, 1, 50,
+        );
+
+        // Activate
+        depot::activate_depot(&mut corridor, &owner_cap, depot_id);
+        assert!(depot::is_depot_active(&corridor, depot_id));
+
+        // Deactivate
+        depot::deactivate_depot(&mut corridor, &owner_cap, depot_id);
+        assert!(!depot::is_depot_active(&corridor, depot_id));
+
+        // Reactivate
+        depot::activate_depot(&mut corridor, &owner_cap, depot_id);
+        assert!(depot::is_depot_active(&corridor, depot_id));
+
+        // Deactivate again
+        depot::deactivate_depot(&mut corridor, &owner_cap, depot_id);
+        assert!(!depot::is_depot_active(&corridor, depot_id));
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}

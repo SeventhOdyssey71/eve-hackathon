@@ -486,3 +486,149 @@ fun test_zero_surge_multiplier() {
 
     scenario.end();
 }
+
+// ===== Security & Edge-Case Tests =====
+
+#[test]
+fun test_toll_config_update_overwrites() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let gate_id = object::id_from_address(SOURCE_GATE);
+
+        // Set initial config
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, gate_id, 1000);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 1000);
+
+        // Overwrite with new value
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, gate_id, 9999);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 9999);
+
+        // Verify only the second value is stored
+        assert!(toll_gate::toll_config_exists(&corridor, gate_id));
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_surge_numerator_zero_gives_zero_toll() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let gate_id = object::id_from_address(SOURCE_GATE);
+
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, gate_id, 5000);
+
+        // With surge_numerator = 0, toll * 0 / 10000 = 0
+        toll_gate::activate_surge(&mut corridor, &owner_cap, gate_id, 0);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 0);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_surge_double_activation() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let gate_id = object::id_from_address(SOURCE_GATE);
+
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, gate_id, 1000);
+
+        // First surge: 2x
+        toll_gate::activate_surge(&mut corridor, &owner_cap, gate_id, 20000);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 2000);
+
+        // Second surge activation overwrites: 5x
+        toll_gate::activate_surge(&mut corridor, &owner_cap, gate_id, 50000);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 5000);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_toll_config_different_amounts_per_gate() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let source_id = object::id_from_address(SOURCE_GATE);
+        let dest_id = object::id_from_address(DEST_GATE);
+
+        // Set very different tolls per gate
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, source_id, 100);
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, dest_id, 50000);
+
+        assert!(toll_gate::get_effective_toll(&corridor, source_id) == 100);
+        assert!(toll_gate::get_effective_toll(&corridor, dest_id) == 50000);
+
+        // Verify they are truly independent
+        toll_gate::activate_surge(&mut corridor, &owner_cap, source_id, 30000);
+        // source: 100 * 30000 / 10000 = 300
+        assert!(toll_gate::get_effective_toll(&corridor, source_id) == 300);
+        // dest unchanged
+        assert!(toll_gate::get_effective_toll(&corridor, dest_id) == 50000);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_effective_toll_without_surge() {
+    let mut scenario = ts::begin(OWNER);
+    setup_corridor(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let gate_id = object::id_from_address(SOURCE_GATE);
+
+        toll_gate::set_toll_config(&mut corridor, &owner_cap, gate_id, 7500);
+
+        // Effective toll should equal base toll when surge is off
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 7500);
+
+        // Activate and deactivate surge to ensure it reverts properly
+        toll_gate::activate_surge(&mut corridor, &owner_cap, gate_id, 20000);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 15000);
+
+        toll_gate::deactivate_surge(&mut corridor, &owner_cap, gate_id);
+        assert!(toll_gate::get_effective_toll(&corridor, gate_id) == 7500);
+
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}

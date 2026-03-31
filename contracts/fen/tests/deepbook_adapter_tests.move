@@ -378,3 +378,181 @@ fun test_cancel_orders_not_linked_fails() {
 
     scenario.end();
 }
+
+// ===== Security & Edge-Case Tests =====
+
+#[test]
+fun test_link_balance_manager_different_operators() {
+    let mut scenario = ts::begin(OWNER);
+    setup(&mut scenario);
+
+    // OWNER links their corridor with OPERATOR as the operator
+    scenario.next_tx(OWNER);
+    {
+        let mut db_registry = scenario.take_shared<BalanceManagerRegistry>();
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let corridor_id = object::id(&corridor);
+
+        deepbook_adapter::link_balance_manager(
+            &mut db_registry, &owner_cap, corridor_id,
+            object::id_from_address(@0xB1), OPERATOR, scenario.ctx(),
+        );
+
+        assert!(deepbook_adapter::balance_manager_operator(&db_registry, corridor_id) == OPERATOR);
+
+        // Unlink and re-link with OTHER as operator to verify different operators work
+        deepbook_adapter::unlink_balance_manager(&mut db_registry, &owner_cap, corridor_id);
+
+        deepbook_adapter::link_balance_manager(
+            &mut db_registry, &owner_cap, corridor_id,
+            object::id_from_address(@0xB2), OTHER, scenario.ctx(),
+        );
+
+        assert!(deepbook_adapter::balance_manager_operator(&db_registry, corridor_id) == OTHER);
+        assert!(deepbook_adapter::balance_manager_operator(&db_registry, corridor_id) != OPERATOR);
+
+        ts::return_shared(db_registry);
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test, expected_failure(abort_code = deepbook_adapter::EManagerNotLinked)]
+fun test_unlink_nonexistent_fails() {
+    let mut scenario = ts::begin(OWNER);
+    setup(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut db_registry = scenario.take_shared<BalanceManagerRegistry>();
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let corridor_id = object::id(&corridor);
+
+        // Nothing linked — unlink should fail
+        deepbook_adapter::unlink_balance_manager(&mut db_registry, &owner_cap, corridor_id);
+
+        ts::return_shared(db_registry);
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_record_order_bid_and_ask() {
+    let mut scenario = ts::begin(OWNER);
+    setup(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut db_registry = scenario.take_shared<BalanceManagerRegistry>();
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let corridor_id = object::id(&corridor);
+        let bm_id = object::id_from_address(@0xB0);
+        let pool_id = object::id_from_address(@0xAA01);
+
+        deepbook_adapter::link_balance_manager(
+            &mut db_registry, &owner_cap, corridor_id, bm_id, OPERATOR, scenario.ctx(),
+        );
+
+        // Place a bid order
+        deepbook_adapter::record_order_placed(
+            &db_registry, &owner_cap, corridor_id, pool_id,
+            true, 5000, 100, 1,
+        );
+
+        // Place an ask order
+        deepbook_adapter::record_order_placed(
+            &db_registry, &owner_cap, corridor_id, pool_id,
+            false, 6000, 50, 2,
+        );
+
+        // Both should succeed without error (events emitted)
+        assert!(deepbook_adapter::has_balance_manager(&db_registry, corridor_id));
+
+        ts::return_shared(db_registry);
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_link_twice_different_managers() {
+    let mut scenario = ts::begin(OWNER);
+    setup(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut db_registry = scenario.take_shared<BalanceManagerRegistry>();
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let corridor_id = object::id(&corridor);
+        let bm_id1 = object::id_from_address(@0xB1);
+        let bm_id2 = object::id_from_address(@0xB2);
+
+        // Link first manager
+        deepbook_adapter::link_balance_manager(
+            &mut db_registry, &owner_cap, corridor_id, bm_id1, OPERATOR, scenario.ctx(),
+        );
+        assert!(deepbook_adapter::balance_manager_id(&db_registry, corridor_id) == bm_id1);
+        assert!(deepbook_adapter::balance_manager_operator(&db_registry, corridor_id) == OPERATOR);
+
+        // Unlink
+        deepbook_adapter::unlink_balance_manager(&mut db_registry, &owner_cap, corridor_id);
+        assert!(!deepbook_adapter::has_balance_manager(&db_registry, corridor_id));
+
+        // Link a different manager with different operator
+        deepbook_adapter::link_balance_manager(
+            &mut db_registry, &owner_cap, corridor_id, bm_id2, OTHER, scenario.ctx(),
+        );
+        assert!(deepbook_adapter::balance_manager_id(&db_registry, corridor_id) == bm_id2);
+        assert!(deepbook_adapter::balance_manager_operator(&db_registry, corridor_id) == OTHER);
+
+        ts::return_shared(db_registry);
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
+
+#[test]
+fun test_balance_manager_view_functions() {
+    let mut scenario = ts::begin(OWNER);
+    setup(&mut scenario);
+
+    scenario.next_tx(OWNER);
+    {
+        let mut db_registry = scenario.take_shared<BalanceManagerRegistry>();
+        let corridor = scenario.take_shared<Corridor>();
+        let owner_cap = scenario.take_from_sender<CorridorOwnerCap>();
+        let corridor_id = object::id(&corridor);
+        let bm_id = object::id_from_address(@0xBEEF);
+
+        // Before linking: has_balance_manager should be false
+        assert!(!deepbook_adapter::has_balance_manager(&db_registry, corridor_id));
+
+        deepbook_adapter::link_balance_manager(
+            &mut db_registry, &owner_cap, corridor_id, bm_id, OPERATOR, scenario.ctx(),
+        );
+
+        // After linking: verify all view functions
+        assert!(deepbook_adapter::has_balance_manager(&db_registry, corridor_id));
+        assert!(deepbook_adapter::balance_manager_id(&db_registry, corridor_id) == bm_id);
+        assert!(deepbook_adapter::balance_manager_operator(&db_registry, corridor_id) == OPERATOR);
+
+        ts::return_shared(db_registry);
+        ts::return_shared(corridor);
+        scenario.return_to_sender(owner_cap);
+    };
+
+    scenario.end();
+}
