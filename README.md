@@ -2,7 +2,7 @@
 
 > Player-owned trade corridors for EVE Frontier on Sui
 
-**EVE Frontier x Sui 2026 Hackathon** | Theme: *A Toolkit for Civilization* | 6 Move modules | 117 tests | Deployed on Sui testnet
+**EVE Frontier x Sui 2026 Hackathon** | Theme: *A Toolkit for Civilization* | 6 Move modules | 152 tests | Deployed on Sui testnet
 
 **Categories**: Utility, Technical Implementation, Live Frontier Integration
 
@@ -88,7 +88,7 @@ Built as a **world-contracts extension package** using the typed witness pattern
 ```bash
 cd contracts/fen
 sui move build
-sui move test    # 117 tests, all passing
+sui move test    # 152 tests, all passing
 ```
 
 ## Dashboard
