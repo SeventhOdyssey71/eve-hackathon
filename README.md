@@ -29,9 +29,12 @@ FEN includes the **first on-chain AMM (automated market maker) for EVE Frontier 
 | Component | ID |
 |-----------|-----|
 | Package (v4 Utopia) | `0x4c2f4a85fdf9667aca3c877b71b112dd017dab2824c251b9291f407b033a441a` |
-| CorridorRegistry | `0x6cb994308037d32961623b5a198365155108b6c1dc2a36df4680bd4be2dea6d3` |
-| BalanceManagerRegistry | `0x50495a9ed1e8205ecb5d9c05730ac3a398d1a2099f546445de14f232321f0df4` |
+| CorridorRegistry (Utopia) | `0x6cb994308037d32961623b5a198365155108b6c1dc2a36df4680bd4be2dea6d3` |
+| BalanceManagerRegistry (Utopia) | `0x50495a9ed1e8205ecb5d9c05730ac3a398d1a2099f546445de14f232321f0df4` |
 | Live Corridor: Odyssey Express | `0x6f5c71b7714bf2ef663685e6fa08aaa011885fa793062203bb65e177e74d8eb1` |
+| **Package (Stillness)** | `0x9063f530b8efe37ede0d1163862a54f609622aa794e6a23b10f4b529de40aa06` |
+| CorridorRegistry (Stillness) | `0xf146755edc53b206a5d03b6e4d5b7a52201f6f9c9d20e9b6fadda87ab52cb665` |
+| BalanceManagerRegistry (Stillness) | `0xe7b1d23eed593b35387ac5a3f2e04ed32959fd85c4b79ce8dd7acdc243f48935` |
 
 See [DEPLOYMENT.md](contracts/fen/DEPLOYMENT.md) for all object IDs.
 
