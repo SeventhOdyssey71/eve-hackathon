@@ -36,6 +36,8 @@ FEN includes the **first on-chain AMM (automated market maker) for EVE Frontier 
 | CorridorRegistry (Stillness) | `0xf146755edc53b206a5d03b6e4d5b7a52201f6f9c9d20e9b6fadda87ab52cb665` |
 | BalanceManagerRegistry (Stillness) | `0xe7b1d23eed593b35387ac5a3f2e04ed32959fd85c4b79ce8dd7acdc243f48935` |
 
+**Live Dashboard:** [https://fen-tan.vercel.app](https://fen-tan.vercel.app)
+
 See [DEPLOYMENT.md](contracts/fen/DEPLOYMENT.md) for all object IDs.
 
 ## Project Structure
